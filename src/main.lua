@@ -1,15 +1,18 @@
 require 'dependencies'
 
-local Menu, Game, StateMachine, love = _G.Menu, _G.Game, _G.StateMachine, _G.love;
+local Menu, Game, Loading, StateMachine, love = _G.Menu, _G.Game, _G.Loading, _G.StateMachine, _G.love;
 local gStateMachine;
 
 function love.load()
+    local customCursor = love.mouse.newCursor("assets/cursor.png", 0, 0)
+    love.mouse.setCursor(customCursor)
     love.graphics.setDefaultFilter('nearest', 'nearest')
 
     -- Initialize state machine with separate state files
     gStateMachine = StateMachine:new({
         ['menu'] = Menu,
-        ['game'] = Game
+        ['game'] = Game,
+        ['loading'] = Loading
     })
     gStateMachine:change('menu')
 
@@ -18,8 +21,6 @@ end
 
 function love.update(dt)
     gStateMachine:update(dt)
-
-    -- Clear keysPressed table at the end of update
     love.keyboard.keysPressed = {}
 end
 
@@ -38,8 +39,14 @@ function love.keypressed(key, scancode, isrepeat)
     -- Temporary state change for testing
     if key == 'space' then
         if gStateMachine.currentStateName == 'menu' then
-            gStateMachine:change('game')
-            print('Switched to game')
+            gStateMachine:change('loading', { 
+                songs = {
+                    {path = "assets/game1.mp3", fftDataPath = "assets/fft_data_game1.json"},
+                    {path = "assets/game2.mp3", fftDataPath = "assets/fft_data_game2.json"},
+                    {path = "assets/game3.mp3", fftDataPath = "assets/fft_data_game3.json"}
+                }
+            })
+            print('Switched to loading')
         end
     end
     if key == 'escape' then

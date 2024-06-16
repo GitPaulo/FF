@@ -22,7 +22,9 @@ end
 
 function StateMachine:change(stateName, enterParams)
     assert(self.states[stateName], "State must exist!") -- state must exist!
-    self.current:exit()
+    if self.current.exit then
+        self.current:exit()
+    end
     self.current = self.states[stateName]
     self.current:enter(enterParams)
     self.currentStateName = stateName -- Track the current state name

@@ -24,6 +24,8 @@ function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfigs)
     self.recoveryEndTime = 0
     self.damageApplied = false
     self.direction = (id == 2) and -1 or 1
+    self.isBlocking = false
+    self.isBlockingDamage = false
 
     self.hitboxes = hitboxes or {
         light = {width = 100, height = 20, recovery = 0.5, damage = 5},
@@ -143,6 +145,8 @@ function Fighter:handleMovement(dt, other)
     elseif not self.isJumping then
         self:setState('idle')
     end
+
+    self.isBlocking = self.direction == other.direction
 end
 
 function Fighter:checkXCollision(newX, newY, other)
@@ -222,6 +226,7 @@ function Fighter:startRecovery()
     self.state = 'recovering'
     self.recoveryEndTime = love.timer.getTime() + self.hitboxes[self.attackType].recovery
     self.lastAttackType = self.attackType
+    print('recovering');
     self.attackType = nil
     self.currentAnimation = self.animations.idle
 end
@@ -277,25 +282,30 @@ function Fighter:render()
     if self.state == 'attacking' and self.attackType then
         self:renderHitbox()
     end
+
+    -- Draw blocking text
+    if self.isBlockingDamage then
+        love.graphics.setColor(1, 1, 0, 1)
+        love.graphics.print("Blocked!", self.x - 12, self.y - 20)
+        love.graphics.setColor(1, 1, 1, 1) -- Reset color
+    end
 end
 
-function Fighter:getHitbox()
-    if self.state == 'attacking' and self.attackType then
-        local hitbox = self.hitboxes[self.attackType]
-        local currentTime = love.timer.getTime()
 
-        if currentTime <= self.attackEndTime then
-            local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
-            return {
-                x = hitboxX,
-                y = self.y + (self.height - hitbox.height) / 2,
-                width = hitbox.width,
-                height = hitbox.height,
-                damage = hitbox.damage
-            }
-        end
+function Fighter:getHitbox()
+    print(self.id, "Getting hitbox for attack type: ", self.attackType)
+    local hitbox = self.hitboxes[self.attackType]
+    if not hitbox then
+        return nil
     end
-    return nil
+    local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
+    return {
+        x = hitboxX,
+        y = self.y + (self.height - hitbox.height) / 2,
+        width = hitbox.width,
+        height = hitbox.height,
+        damage = hitbox.damage
+    }
 end
 
 function Fighter:renderHitbox()
@@ -311,24 +321,24 @@ function Fighter:renderHitbox()
 end
 
 function Fighter:isHit(other)
-    local hitbox = self:getHitbox()
-    if hitbox and not self.damageApplied then
-        if self.direction == 1 then
-            if hitbox.x < other.x + other.width and
-               hitbox.x + hitbox.width > other.x and
-               hitbox.y < other.y + other.height and
-               hitbox.y + hitbox.height > other.y then
-                self.damageApplied = true  -- Mark damage as applied
-                return true
+    self.isBlockingDamage = false
+
+    if other.state ~= 'attacking' then
+        return false
+    end
+
+    local hitbox = other:getHitbox()
+    if hitbox and not other.damageApplied then
+        if hitbox.x < self.x + self.width and
+            hitbox.x + hitbox.width > self.x and
+            hitbox.y < self.y + self.height and
+            hitbox.y + hitbox.height > self.y then
+            if self.isBlocking then
+                self.isBlockingDamage = true
+                return false
             end
-        else
-            if hitbox.x < other.x + other.width and
-               hitbox.x + hitbox.width > other.x and
-               hitbox.y < other.y + other.height and
-               hitbox.y + hitbox.height > other.y then
-                self.damageApplied = true  -- Mark damage as applied
-                return true
-            end
+            other.damageApplied = true  -- Mark damage as applied
+            return true
         end
     end
     return false

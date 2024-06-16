@@ -1,4 +1,5 @@
-local Fighter = _G.Fighter;
+local Fighter = _G.Fighter
+local json = require "lib.json"
 local Game = {}
 
 local SPRITE_WIDTH = 800
@@ -6,7 +7,8 @@ local SPRITE_HEIGHT = 300
 local FRAMES = 38
 local SPEED = 10
 
-function Game:enter()
+function Game:enter(params)
+    self.songs = params and params.songs or {}
     self.background = love.graphics.newImage("assets/background_game_spritesheet.png")
     self.background_quads = {}
 
@@ -87,10 +89,31 @@ function Game:enter()
             death = {'assets/Fighter2/Death.png', 7}
         }
     )
+
+    -- FFT visualizer setup
+    self.fftBufferSize = 64
+    self.fftData = {}
+    self.fftAngleStep = (2 * math.pi) / self.fftBufferSize
+    self.fftRadius = 25
+    self.fftMaxHeight = 18
+
+    self.currentSongIndex = 1
+    self:playCurrentSong()
 end
 
 function Game:exit()
-    -- Cleanup for the game state if necessary
+    self.music:stop()
+end
+
+function Game:playCurrentSong()
+    local song = self.songs[self.currentSongIndex]
+    self.music = love.audio.newSource(song.path, "stream")
+    self.music:setLooping(false)
+    self.music:play()
+
+    -- Use preloaded FFT data
+    self.fftData = song.fftData
+    self.fftDataIndex = 1
 end
 
 function Game:update(dt)
@@ -106,10 +129,12 @@ function Game:update(dt)
 
     -- Check for collisions and apply damage
     if self.fighter1:isHit(self.fighter2) then
-        self.fighter2:takeDamage(self.fighter1:getHitbox().damage)
+        local hitbox = self.fighter2:getHitbox()
+        self.fighter1:takeDamage(hitbox.damage)
     end
     if self.fighter2:isHit(self.fighter1) then
-        self.fighter1:takeDamage(self.fighter2:getHitbox().damage)
+        local hitbox = self.fighter1:getHitbox()
+        self.fighter2:takeDamage(hitbox.damage)
     end
 
     -- Check for game over
@@ -119,6 +144,15 @@ function Game:update(dt)
     elseif self.fighter2.health <= 0 then
         self.gameOver = true
         self.winner = "Fighter 1 Wins!"
+    end
+
+    -- Update FFT data index
+    self.fftDataIndex = (self.fftDataIndex % #self.fftData) + 1
+
+    -- Check if the current song has finished playing
+    if not self.music:isPlaying() then
+        self.currentSongIndex = self.currentSongIndex % #self.songs + 1
+        self:playCurrentSong()
     end
 end
 
@@ -135,6 +169,9 @@ function Game:render()
 
     -- Render health bars
     self:renderHealthBars()
+
+    -- Render FFT visualizer
+    self:renderFFT()
 
     -- Render game over screen if game is over
     if self.gameOver then
@@ -161,6 +198,26 @@ function Game:renderHealthBars()
     love.graphics.rectangle('fill', SPRITE_WIDTH - barWidth - padding, padding, barWidth * (self.fighter2.health / 100), barHeight)
 
     love.graphics.setColor(1, 1, 1, 1) -- Reset color
+end
+
+function Game:renderFFT()
+    local centerX = SPRITE_WIDTH / 2
+    local centerY = 40
+    local fftData = self.fftData[self.fftDataIndex]
+    if fftData then
+        for i = 1, #fftData do
+            local angle = self.fftAngleStep * (i - 1)
+            local barHeight = fftData[i] * self.fftMaxHeight
+            if barHeight then
+                local x1 = centerX + self.fftRadius * math.cos(angle)
+                local y1 = centerY + self.fftRadius * math.sin(angle)
+                local x2 = centerX + (self.fftRadius + barHeight) * math.cos(angle)
+                local y2 = centerY + (self.fftRadius + barHeight) * math.sin(angle)
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.line(x1, y1, x2, y2)
+            end
+        end
+    end
 end
 
 function Game:keypressed(key)
