@@ -28,16 +28,24 @@ function StateMachine:change(stateName, enterParams)
     self.currentStateName = stateName -- Track the current state name
 end
 
+-- Hooks
+
 function StateMachine:update(dt)
-    self.current:update(dt)
+    if self.current.update then
+        self.current:update(dt)
+    end
 end
 
 function StateMachine:render()
-    self.current:render()
+    if self.current.render then
+        self.current:render()
+    end
 end
 
 function StateMachine:mousepressed(x, y, button)
-    self.current:mousepressed(x, y, button)
+    if self.current.mousepressed then
+        self.current:mousepressed(x, y, button)
+    end
 end
 
 return StateMachine

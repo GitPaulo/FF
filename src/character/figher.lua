@@ -1,45 +1,46 @@
 local Anim8 = require 'lib.anim8'
 
-local Class = _G.Class;
+local Class = _G.Class
 local Fighter = Class:extend()
 
-function Fighter:init(id, x, y, controls, hitboxes, attackDurations, speed, spriteConfigs)
+function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfigs)
     self.id = id
     self.x = x
     self.y = y
     self.width = 50
     self.height = 100
-    self.speed = speed or 200
+    self.speed = traits.speed or 200
     self.controls = controls
     self.dy = 0
     self.jumpStrength = -500
     self.gravity = 1000
     self.isJumping = false
-    self.health = 100  -- Initial health for the fighter
+    self.health = 100
 
-    self.state = 'idle'  -- Possible states: idle, attacking, recovering, running, jumping, falling, hit, dead
+    self.state = 'idle'
     self.attackType = nil
     self.attackEndTime = 0
     self.recoveryEndTime = 0
-    self.damageApplied = false  -- Track if damage has been applied for the current attack
-
-    self.direction = (id == 2) and -1 or 1  -- Fighter 2 faces the other way
+    self.damageApplied = false
+    self.direction = (id == 2) and -1 or 1
 
     self.hitboxes = hitboxes or {
         light = {width = 100, height = 20, recovery = 0.5, damage = 5},
         medium = {width = 150, height = 30, recovery = 0.7, damage = 10},
         heavy = {width = 200, height = 40, recovery = 1.0, damage = 20}
     }
-
-    self.attackDurations = attackDurations or {
-        light = {duration = 0.3, animationTime = 0.15},
-        medium = {duration = 0.8, animationTime = 0.4},
-        heavy = {duration = 1.5, animationTime = 0.75}
+    self.spriteConfigs = spriteConfigs or {
+        idle = {'assets/Fighter' .. id .. '/Idle.png', 4},
+        run = {'assets/Fighter' .. id .. '/Run.png', 8},
+        jump = {'assets/Fighter' .. id .. '/Jump.png', 2},
+        light = {'assets/Fighter' .. id .. '/Attack1.png', 4},
+        medium = {'assets/Fighter' .. id .. '/Attack2.png', 4},
+        heavy = {'assets/Fighter' .. id .. '/Attack3.png', 4},
+        hit = {'assets/Fighter' .. id .. '/Take Hit.png', 3},
+        death = {'assets/Fighter' .. id .. '/Death.png', 7}
     }
 
     self:validateHitboxes()
-
-    -- Load spritesheets and set up animations
     self.spritesheets = self:loadSpritesheets(spriteConfigs)
     self.animations = self:loadAnimations(spriteConfigs)
     self.currentAnimation = self.animations.idle
@@ -59,7 +60,7 @@ function Fighter:loadSpritesheets(configs)
 
     for key, config in pairs(configs) do
         spritesheets[key] = love.graphics.newImage(config[1])
-        print("Loaded spritesheet for", key, "from", config[1])
+        print("Loaded spritesheet for", key, "from", config[1], "with frame count:", config[2], "and dimensions:", spritesheets[key]:getDimensions())
     end
 
     return spritesheets
@@ -71,7 +72,13 @@ function Fighter:loadAnimations(configs)
     for key, config in pairs(configs) do
         local path = config[1]
         local frameCount = config[2]
-        animations[key] = self:createAnimation(self.spritesheets[key], 200, 200, frameCount, 0.1)
+        animations[key] = self:createAnimation(
+            self.spritesheets[key],
+            200,
+            200,
+            frameCount,
+            0.1
+        )
     end
 
     return animations
@@ -87,9 +94,10 @@ function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, dur
 end
 
 function Fighter:update(dt, other)
-    if self.state ~= 'attacking' and self.state ~= 'recovering' then
-        self:handleMovement(dt, other)
-        self:handleJumping(dt, other)
+    self:handleMovement(dt, other)
+    self:handleJumping(dt, other)
+
+    if self.state ~= 'recovering' then
         self:handleAttacks(dt)
     end
 
@@ -125,8 +133,6 @@ function Fighter:handleMovement(dt, other)
                 self:setState('run')
             end
         end
-    elseif not self.isJumping then
-        self:setState('idle')
     end
 end
 
@@ -143,19 +149,22 @@ function Fighter:handleJumping(dt, other)
     self.dy = self.dy + self.gravity * dt
     local newY = self.y + self.dy * dt
 
-    if newY >= windowHeight - self.height then -- assuming the bottom of the window is the ground level
+    if newY >= windowHeight - self.height then
         self.y = windowHeight - self.height
         self.isJumping = false
         self.dy = 0
-        if not love.keyboard.isDown(self.controls.left) and not love.keyboard.isDown(self.controls.right) then
+        if not love.keyboard.isDown(self.controls.left)
+            and not love.keyboard.isDown(self.controls.right)
+                and self.state ~= 'attacking'
+                    and self.state ~= 'recovering' then
             self:setState('idle')
         end
     elseif not self:checkYCollision(newY, other) then
         self.y = newY
     else
-        if self.dy > 0 then -- Falling down
+        if self.dy > 0 then
             self.y = other.y - self.height
-        else -- Jumping up
+        else
             self.y = other.y + other.height
         end
         self.dy = 0
@@ -189,10 +198,11 @@ end
 function Fighter:startAttack(attackType)
     self.state = 'attacking'
     self.attackType = attackType
-    self.damageApplied = false  -- Reset damage applied flag
-    local attackDuration = self.attackDurations[attackType].duration
+    self.damageApplied = false
+    local attackDuration = self.hitboxes[attackType].duration
     self.attackEndTime = love.timer.getTime() + attackDuration
     self.currentAnimation = self.animations[attackType]
+    self.currentAnimation:gotoFrame(1)
 end
 
 function Fighter:startRecovery()
@@ -224,16 +234,13 @@ function Fighter:setState(state)
         else
             self.currentAnimation = self.animations.idle
         end
-        if self.currentAnimation then
-            self.currentAnimation:gotoFrame(1)
-        end
     end
 end
 
 function Fighter:render()
     -- Ensure the correct spritesheet is used for the current state
-    local spritesheet = self.spritesheets[self.state] or self.spritesheets.idle
-    print("Rendering state:", self.state, "using spritesheet:", spritesheet)
+    local spriteName = self.state == 'attacking' and self.attackType or self.state
+    local sprite = self.spritesheets[spriteName] or self.spritesheets.idle
     if self.currentAnimation then
         -- Adjust these values to change the size of the sprite
         local scaleX = self.width / 35 * self.direction
@@ -244,7 +251,7 @@ function Fighter:render()
         local offsetY = (self.height - (200 * scaleY)) / 2
 
         -- Draw the animation with scaling and positioning adjustments
-        self.currentAnimation:draw(spritesheet, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY)
+        self.currentAnimation:draw(sprite, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY)
     else
         print("Error: No current animation to draw for state:", self.state)
     end
@@ -261,10 +268,9 @@ end
 function Fighter:getHitbox()
     if self.state == 'attacking' and self.attackType then
         local hitbox = self.hitboxes[self.attackType]
-        local animationTime = self.attackDurations[self.attackType].animationTime
         local currentTime = love.timer.getTime()
 
-        if currentTime <= self.attackEndTime - (self.attackDurations[self.attackType].duration - animationTime) then
+        if currentTime <= self.attackEndTime and currentTime >= (self.attackEndTime - hitbox.duration) then
             local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
             return {
                 x = hitboxX,
@@ -278,18 +284,19 @@ function Fighter:getHitbox()
     return nil
 end
 
+
 function Fighter:renderHitbox()
     local hitbox = self.hitboxes[self.attackType]
-    local animationTime = self.attackDurations[self.attackType].animationTime
     local currentTime = love.timer.getTime()
 
-    if currentTime <= self.attackEndTime - (self.attackDurations[self.attackType].duration - animationTime) then
+    if currentTime <= self.attackEndTime and currentTime >= (self.attackEndTime - hitbox.duration) then
         love.graphics.setColor(1, 0, 0, 1)
         local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
         love.graphics.rectangle('line', hitboxX, self.y + (self.height - hitbox.height) / 2, hitbox.width, hitbox.height)
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 end
+
 
 function Fighter:isHit(other)
     local hitbox = self:getHitbox()

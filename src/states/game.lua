@@ -25,49 +25,60 @@ function Game:enter()
     self.winner = nil
 
     -- Initialize fighters with unique characteristics
-    self.fighter1 = Fighter:new(1, 100, 200, {
-        left = 'a', right = 'd', jump = 'w',
-        lightAttack = 'v', mediumAttack = 'b', heavyAttack = 'n'
-    }, {
-        light = {width = 100, height = 20, recovery = 0.4, damage = 5},
-        medium = {width = 140, height = 25, recovery = 0.6, damage = 10},
-        heavy = {width = 180, height = 30, recovery = 0.9, damage = 20}
-    }, {
-        light = {duration = 1, animationTime = 0.1},
-        medium = {duration = 2, animationTime = 0.3},
-        heavy = {duration = 3, animationTime = 0.6}
-    }, 220, {
-        idle = {'assets/Fighter1/Idle.png', 8},
-        run = {'assets/Fighter1/Run.png', 8},
-        jump = {'assets/Fighter1/Jump.png', 2},
-        light = {'assets/Fighter1/Attack1.png', 6},
-        medium = {'assets/Fighter1/Attack2.png', 6},
-        heavy = {'assets/Fighter1/Attack2.png', 6},
-        hit = {'assets/Fighter1/Take Hit.png', 4},
-        death = {'assets/Fighter1/Death.png', 6}
-    })
-
-    self.fighter2 = Fighter:new(2, 600, 200, {
-        left = 'left', right = 'right', jump = 'up',
-        lightAttack = 'e', mediumAttack = 'r', heavyAttack = 't'
-    }, {
-        light = {width = 110, height = 20, recovery = 0.5, damage = 7},
-        medium = {width = 160, height = 30, recovery = 0.8, damage = 12},
-        heavy = {width = 200, height = 40, recovery = 1.1, damage = 25}
-    }, {
-        light = {duration = 0.3, animationTime = 0.15},
-        medium = {duration = 0.7, animationTime = 0.35},
-        heavy = {duration = 1.5, animationTime = 0.75}
-    }, 180, {
-        idle = {'assets/Fighter2/Idle.png', 4},
-        run = {'assets/Fighter2/Run.png', 8},
-        jump = {'assets/Fighter2/Jump.png', 2},
-        light = {'assets/Fighter2/Attack1.png', 4},
-        medium = {'assets/Fighter2/Attack2.png', 4},
-        heavy = {'assets/Fighter2/Attack2.png', 4},
-        hit = {'assets/Fighter2/Take Hit.png', 3},
-        death = {'assets/Fighter2/Death.png', 7}
-    })
+    self.fighter1 = Fighter:new(
+        1,   -- id
+        100, -- start x
+        200, -- start y
+        {
+            left = 'a', right = 'd', jump = 'w',
+            lightAttack = 'v', mediumAttack = 'b', heavyAttack = 'n'
+        },
+        {
+            speed = 200,
+        },
+        {
+            light = {width = 100, height = 20, recovery = 0.4, damage = 5, duration = .5},
+            medium = {width = 140, height = 25, recovery = 0.6, damage = 10, duration = 1},
+            heavy = {width = 180, height = 30, recovery = 0.9, damage = 20, duration = 2}
+        },
+        {
+            idle = {'assets/Fighter1/Idle.png', 8},
+            run = {'assets/Fighter1/Run.png', 8},
+            jump = {'assets/Fighter1/Jump.png', 2},
+            light = {'assets/Fighter1/Attack1.png', 6},
+            medium = {'assets/Fighter1/Attack2.png', 6},
+            heavy = {'assets/Fighter1/Attack2.png', 6},
+            hit = {'assets/Fighter1/Take Hit.png', 4},
+            death = {'assets/Fighter1/Death.png', 6}
+        }
+    )
+    self.fighter2 = Fighter:new(
+        2,   -- id
+        600, -- start x
+        200, -- start y
+        {
+            left = 'left', right = 'right', jump = 'up',
+            lightAttack = 'e', mediumAttack = 'r', heavyAttack = 't'
+        },
+        {
+            speed = 150,
+        },
+        {
+            light = {width = 110, height = 20, recovery = 0.5, damage = 7, duration = 1},
+            medium = {width = 160, height = 30, recovery = 0.8, damage = 12, duration = 2},
+            heavy = {width = 200, height = 40, recovery = 1.1, damage = 25, duration = 2}
+        },
+        {
+            idle = {'assets/Fighter2/Idle.png', 4},
+            run = {'assets/Fighter2/Run.png', 8},
+            jump = {'assets/Fighter2/Jump.png', 2},
+            light = {'assets/Fighter2/Attack1.png', 4},
+            medium = {'assets/Fighter2/Attack2.png', 4},
+            heavy = {'assets/Fighter2/Attack2.png', 4},
+            hit = {'assets/Fighter2/Take Hit.png', 3},
+            death = {'assets/Fighter2/Death.png', 7}
+        }
+    )
 end
 
 function Game:exit()
