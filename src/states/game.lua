@@ -35,7 +35,16 @@ function Game:enter()
         light = {duration = 0.2, animationTime = 0.1},
         medium = {duration = 0.6, animationTime = 0.3},
         heavy = {duration = 1.2, animationTime = 0.6}
-    }, 220)  -- fighter 1 with speed 220
+    }, 220, {
+        idle = {'assets/Fighter1/Idle.png', 8},
+        run = {'assets/Fighter1/Run.png', 8},
+        jump = {'assets/Fighter1/Jump.png', 2},
+        light = {'assets/Fighter1/Attack1.png', 6},
+        medium = {'assets/Fighter1/Attack2.png', 6},
+        heavy = {'assets/Fighter1/Attack2.png', 6},
+        hit = {'assets/Fighter1/Take Hit.png', 4},
+        death = {'assets/Fighter1/Death.png', 6}
+    })
 
     self.fighter2 = Fighter:new(2, 600, 200, {
         left = 'left', right = 'right', jump = 'up',
@@ -48,7 +57,16 @@ function Game:enter()
         light = {duration = 0.3, animationTime = 0.15},
         medium = {duration = 0.7, animationTime = 0.35},
         heavy = {duration = 1.5, animationTime = 0.75}
-    }, 180)  -- fighter 2 with speed 180
+    }, 180, {
+        idle = {'assets/Fighter2/Idle.png', 4},
+        run = {'assets/Fighter2/Run.png', 8},
+        jump = {'assets/Fighter2/Jump.png', 2},
+        light = {'assets/Fighter2/Attack1.png', 4},
+        medium = {'assets/Fighter2/Attack2.png', 4},
+        heavy = {'assets/Fighter2/Attack2.png', 4},
+        hit = {'assets/Fighter2/Take Hit.png', 3},
+        death = {'assets/Fighter2/Death.png', 7}
+    })
 end
 
 function Game:exit()

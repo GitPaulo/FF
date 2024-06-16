@@ -1,6 +1,7 @@
+local Anim8 = require 'lib.anim8'
 local Fighter = Class:extend()
 
-function Fighter:init(id, x, y, controls, hitboxes, attackDurations, speed)
+function Fighter:init(id, x, y, controls, hitboxes, attackDurations, speed, spriteConfigs)
     self.id = id
     self.x = x
     self.y = y
@@ -14,7 +15,7 @@ function Fighter:init(id, x, y, controls, hitboxes, attackDurations, speed)
     self.isJumping = false
     self.health = 100  -- Initial health for the fighter
 
-    self.state = 'idle'  -- Possible states: idle, attacking, recovering
+    self.state = 'idle'  -- Possible states: idle, attacking, recovering, running, jumping, falling, hit, dead
     self.attackType = nil
     self.attackEndTime = 0
     self.recoveryEndTime = 0
@@ -33,6 +34,11 @@ function Fighter:init(id, x, y, controls, hitboxes, attackDurations, speed)
     }
 
     self:validateHitboxes()
+
+    -- Load spritesheets and set up animations
+    self.spritesheets = self:loadSpritesheets(spriteConfigs)
+    self.animations = self:loadAnimations(spriteConfigs)
+    self.currentAnimation = self.animations.idle
 end
 
 function Fighter:validateHitboxes()
@@ -44,18 +50,57 @@ function Fighter:validateHitboxes()
     end
 end
 
+function Fighter:loadSpritesheets(configs)
+    local spritesheets = {}
+
+    for key, config in pairs(configs) do
+        spritesheets[key] = love.graphics.newImage(config[1])
+        print("Loaded spritesheet for", key, "from", config[1])
+    end
+
+    return spritesheets
+end
+
+function Fighter:loadAnimations(configs)
+    local animations = {}
+
+    for key, config in pairs(configs) do
+        local path = config[1]
+        local frameCount = config[2]
+        animations[key] = self:createAnimation(self.spritesheets[key], 200, 200, frameCount, 0.1)
+    end
+
+    return animations
+end
+
+function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, duration)
+    if not image then
+        print("Error: Image for animation is nil")
+        return nil
+    end
+    local grid = Anim8.newGrid(frameWidth, frameHeight, image:getWidth(), image:getHeight())
+    return Anim8.newAnimation(grid('1-' .. frameCount, 1), duration)
+end
+
 function Fighter:update(dt)
     self:handleMovement(dt)
     self:handleJumping(dt)
     self:handleAttacks(dt)
+
+    if self.currentAnimation then
+        self.currentAnimation:update(dt)
+    end
 end
 
 function Fighter:handleMovement(dt)
     if love.keyboard.isDown(self.controls.left) then
         self.x = self.x - self.speed * dt
-    end
-    if love.keyboard.isDown(self.controls.right) then
+        self.currentAnimation = self.animations.run
+    elseif love.keyboard.isDown(self.controls.right) then
         self.x = self.x + self.speed * dt
+        self.currentAnimation = self.animations.run
+    else
+        self.currentAnimation = self.animations.idle
     end
 end
 
@@ -71,6 +116,7 @@ function Fighter:handleJumping(dt)
     elseif love.keyboard.isDown(self.controls.jump) then
         self.dy = self.jumpStrength
         self.isJumping = true
+        self.currentAnimation = self.animations.jump
     end
 end
 
@@ -101,20 +147,43 @@ function Fighter:startAttack(attackType)
     self.damageApplied = false  -- Reset damage applied flag
     local attackDuration = self.attackDurations[attackType].duration
     self.attackEndTime = love.timer.getTime() + attackDuration
+    self.currentAnimation = self.animations[attackType]
 end
 
 function Fighter:startRecovery()
     self.state = 'recovering'
     self.recoveryEndTime = love.timer.getTime() + self.hitboxes[self.attackType].recovery
     self.attackType = nil
+    self.currentAnimation = self.animations.idle
 end
 
 function Fighter:endRecovery()
     self.state = 'idle'
+    self.currentAnimation = self.animations.idle
 end
 
 function Fighter:render()
-    love.graphics.rectangle('fill', self.x, self.y, self.width, self.height)
+    -- Ensure the correct spritesheet is used for the current state
+    local spritesheet = self.spritesheets[self.state] or self.spritesheets.idle
+    print("Rendering state:", self.state, "using spritesheet:", spritesheet)
+    if self.currentAnimation then
+        -- Adjust these values to change the size of the sprite
+        local scaleX = self.width / 35  -- Adjust the 200 to the actual width of your sprite
+        local scaleY = self.height / 80  -- Adjust the 200 to the actual height of your sprite
+
+        -- Ensure the sprite is centered within the rectangle
+        local offsetX = (self.width - (200 * scaleX)) / 2
+        local offsetY = (self.height - (200 * scaleY)) / 2
+
+        -- Draw the animation with scaling and positioning adjustments
+        self.currentAnimation:draw(spritesheet, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY)
+    else
+        print("Error: No current animation to draw for state:", self.state)
+    end
+
+    -- Draw debug rectangle
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.rectangle('line', self.x, self.y, self.width, self.height)
 
     if self.state == 'attacking' and self.attackType then
         self:renderHitbox()
