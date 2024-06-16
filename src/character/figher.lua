@@ -140,27 +140,29 @@ end
 function Fighter:handleJumping(dt, other)
     local windowHeight = love.graphics.getHeight()
 
-    if self.isJumping then
-        self.dy = self.dy + self.gravity * dt
-        local newY = self.y + self.dy * dt
+    self.dy = self.dy + self.gravity * dt
+    local newY = self.y + self.dy * dt
 
-        if newY >= windowHeight - self.height then -- assuming the bottom of the window is the ground level
-            self.y = windowHeight - self.height
-            self.isJumping = false
-            self.dy = 0
+    if newY >= windowHeight - self.height then -- assuming the bottom of the window is the ground level
+        self.y = windowHeight - self.height
+        self.isJumping = false
+        self.dy = 0
+        if not love.keyboard.isDown(self.controls.left) and not love.keyboard.isDown(self.controls.right) then
             self:setState('idle')
-        elseif not self:checkYCollision(newY, other) then
-            self.y = newY
-        else
-            if self.dy > 0 then -- Falling down
-                self.y = other.y - self.height
-            else -- Jumping up
-                self.y = other.y + other.height
-            end
-            self.dy = 0
-            self.isJumping = false
         end
-    elseif love.keyboard.wasPressed(self.controls.jump) then
+    elseif not self:checkYCollision(newY, other) then
+        self.y = newY
+    else
+        if self.dy > 0 then -- Falling down
+            self.y = other.y - self.height
+        else -- Jumping up
+            self.y = other.y + other.height
+        end
+        self.dy = 0
+        self.isJumping = false
+    end
+
+    if love.keyboard.wasPressed(self.controls.jump) and not self.isJumping and self.y >= windowHeight - self.height then
         self.dy = self.jumpStrength
         self.isJumping = true
         self:setState('jump')
