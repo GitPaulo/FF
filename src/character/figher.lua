@@ -21,6 +21,8 @@ function Fighter:init(id, x, y, controls, hitboxes, attackDurations, speed, spri
     self.recoveryEndTime = 0
     self.damageApplied = false  -- Track if damage has been applied for the current attack
 
+    self.direction = (id == 2) and -1 or 1  -- Fighter 2 faces the other way
+
     self.hitboxes = hitboxes or {
         light = {width = 100, height = 20, recovery = 0.5, damage = 5},
         medium = {width = 150, height = 30, recovery = 0.7, damage = 10},
@@ -83,24 +85,32 @@ function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, dur
 end
 
 function Fighter:update(dt)
-    self:handleMovement(dt)
-    self:handleJumping(dt)
-    self:handleAttacks(dt)
+    if self.state ~= 'attacking' and self.state ~= 'recovering' then
+        self:handleMovement(dt)
+        self:handleJumping(dt)
+        self:handleAttacks(dt)
+    end
 
     if self.currentAnimation then
         self.currentAnimation:update(dt)
     end
+
+    self:updateState()
 end
 
 function Fighter:handleMovement(dt)
     if love.keyboard.isDown(self.controls.left) then
         self.x = self.x - self.speed * dt
-        self.currentAnimation = self.animations.run
+        if not self.isJumping then
+            self:setState('run')
+        end
     elseif love.keyboard.isDown(self.controls.right) then
         self.x = self.x + self.speed * dt
-        self.currentAnimation = self.animations.run
-    else
-        self.currentAnimation = self.animations.idle
+        if not self.isJumping then
+            self:setState('run')
+        end
+    elseif not self.isJumping then
+        self:setState('idle')
     end
 end
 
@@ -112,32 +122,22 @@ function Fighter:handleJumping(dt)
             self.y = 200
             self.isJumping = false
             self.dy = 0
+            self:setState('idle')
         end
-    elseif love.keyboard.isDown(self.controls.jump) then
+    elseif love.keyboard.wasPressed(self.controls.jump) then
         self.dy = self.jumpStrength
         self.isJumping = true
-        self.currentAnimation = self.animations.jump
+        self:setState('jump')
     end
 end
 
 function Fighter:handleAttacks(dt)
-    -- Handle attack initiation
-    if self.state == 'idle' then
-        if love.keyboard.wasPressed(self.controls.lightAttack) then
-            self:startAttack('light')
-        elseif love.keyboard.wasPressed(self.controls.mediumAttack) then
-            self:startAttack('medium')
-        elseif love.keyboard.wasPressed(self.controls.heavyAttack) then
-            self:startAttack('heavy')
-        end
-    end
-
-    -- Update attack and recovery states
-    local currentTime = love.timer.getTime()
-    if self.state == 'attacking' and currentTime >= self.attackEndTime then
-        self:startRecovery()
-    elseif self.state == 'recovering' and currentTime >= self.recoveryEndTime then
-        self:endRecovery()
+    if love.keyboard.wasPressed(self.controls.lightAttack) then
+        self:startAttack('light')
+    elseif love.keyboard.wasPressed(self.controls.mediumAttack) then
+        self:startAttack('medium')
+    elseif love.keyboard.wasPressed(self.controls.heavyAttack) then
+        self:startAttack('heavy')
     end
 end
 
@@ -162,14 +162,33 @@ function Fighter:endRecovery()
     self.currentAnimation = self.animations.idle
 end
 
+function Fighter:updateState()
+    local currentTime = love.timer.getTime()
+    if self.state == 'attacking' and currentTime >= self.attackEndTime then
+        self:startRecovery()
+    elseif self.state == 'recovering' and currentTime >= self.recoveryEndTime then
+        self:endRecovery()
+    end
+end
+
+function Fighter:setState(state)
+    if self.state ~= state then
+        self.state = state
+        self.currentAnimation = self.animations[state] or self.animations.idle
+        if self.currentAnimation then
+            self.currentAnimation:gotoFrame(1)
+        end
+    end
+end
+
 function Fighter:render()
     -- Ensure the correct spritesheet is used for the current state
     local spritesheet = self.spritesheets[self.state] or self.spritesheets.idle
     print("Rendering state:", self.state, "using spritesheet:", spritesheet)
     if self.currentAnimation then
         -- Adjust these values to change the size of the sprite
-        local scaleX = self.width / 35  -- Adjust the 200 to the actual width of your sprite
-        local scaleY = self.height / 80  -- Adjust the 200 to the actual height of your sprite
+        local scaleX = self.width / 35 * self.direction
+        local scaleY = self.height / 80
 
         -- Ensure the sprite is centered within the rectangle
         local offsetX = (self.width - (200 * scaleX)) / 2
@@ -239,6 +258,9 @@ function Fighter:takeDamage(damage)
     self.health = self.health - damage
     if self.health <= 0 then
         self.health = 0
+        self:setState('death')
+    else
+        self:setState('hit')
     end
 end
 
