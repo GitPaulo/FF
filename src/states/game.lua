@@ -29,18 +29,22 @@ function Game:enter()
         1,   -- id
         100, -- start x
         200, -- start y
+        -- controls
         {
             left = 'a', right = 'd', jump = 'w',
-            lightAttack = 'v', mediumAttack = 'b', heavyAttack = 'n'
+            lightAttack = 'e', mediumAttack = 'r', heavyAttack = 't'
         },
+        -- traits
         {
             speed = 200,
         },
+        -- attacks and hitbox
         {
-            light = {width = 100, height = 20, recovery = 0.4, damage = 5, duration = .5},
-            medium = {width = 140, height = 25, recovery = 0.6, damage = 10, duration = 1},
-            heavy = {width = 180, height = 30, recovery = 0.9, damage = 20, duration = 2}
+            light = {width = 95, height = 70, recovery = 0.9, damage = 7, duration = .5},
+            medium = {width = 125, height = 25, recovery = 1.8, damage = 15, duration = .8},
+            heavy = {width = 125, height = 25, recovery = 2, damage = 20, duration = 1.4}
         },
+        -- sprites
         {
             idle = {'assets/Fighter1/Idle.png', 8},
             run = {'assets/Fighter1/Run.png', 8},
@@ -56,18 +60,22 @@ function Game:enter()
         2,   -- id
         600, -- start x
         200, -- start y
+        -- control
         {
-            left = 'left', right = 'right', jump = 'up',
-            lightAttack = 'e', mediumAttack = 'r', heavyAttack = 't'
+            left = 'h', right = 'k', jump = 'u',
+            lightAttack = 'i', mediumAttack = 'o', heavyAttack = 'p'
         },
+        -- traits
         {
             speed = 150,
         },
+        -- attacks and hitbox
         {
-            light = {width = 110, height = 20, recovery = 0.5, damage = 7, duration = 1},
-            medium = {width = 160, height = 30, recovery = 0.8, damage = 12, duration = 2},
-            heavy = {width = 200, height = 40, recovery = 1.1, damage = 25, duration = 2}
+            light = {width = 90, height = 20, recovery = 0.7, damage = 7, duration = .5},
+            medium = {width = 90, height = 90, recovery = 1.6, damage = 12, duration = .7},
+            heavy = {width = 90, height = 90, recovery = 2.5, damage = 25, duration = 1.2}
         },
+        -- sprites
         {
             idle = {'assets/Fighter2/Idle.png', 4},
             run = {'assets/Fighter2/Run.png', 8},

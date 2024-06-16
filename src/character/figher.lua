@@ -19,6 +19,7 @@ function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfigs)
 
     self.state = 'idle'
     self.attackType = nil
+    self.lastAttackType = nil
     self.attackEndTime = 0
     self.recoveryEndTime = 0
     self.damageApplied = false
@@ -111,7 +112,12 @@ end
 function Fighter:handleMovement(dt, other)
     local windowWidth = love.graphics.getWidth()
 
+    if self.state == 'attacking' then
+        return;
+    end
+
     if love.keyboard.isDown(self.controls.left) then
+        self.direction = -1 -- Set direction to left
         local newX = self.x - self.speed * dt
         if newX < 0 then
             newX = 0
@@ -123,6 +129,7 @@ function Fighter:handleMovement(dt, other)
             end
         end
     elseif love.keyboard.isDown(self.controls.right) then
+        self.direction = 1 -- Set direction to right
         local newX = self.x + self.speed * dt
         if newX + self.width > windowWidth then
             newX = windowWidth - self.width
@@ -133,6 +140,8 @@ function Fighter:handleMovement(dt, other)
                 self:setState('run')
             end
         end
+    elseif not self.isJumping then
+        self:setState('idle')
     end
 end
 
@@ -186,6 +195,10 @@ function Fighter:checkYCollision(newY, other)
 end
 
 function Fighter:handleAttacks(dt)
+    if self.state == 'attacking' or self.state == 'recovering' then
+        return -- Prevent new attacks from starting if already attacking or recovering
+    end
+
     if love.keyboard.wasPressed(self.controls.lightAttack) then
         self:startAttack('light')
     elseif love.keyboard.wasPressed(self.controls.mediumAttack) then
@@ -208,6 +221,7 @@ end
 function Fighter:startRecovery()
     self.state = 'recovering'
     self.recoveryEndTime = love.timer.getTime() + self.hitboxes[self.attackType].recovery
+    self.lastAttackType = self.attackType
     self.attackType = nil
     self.currentAnimation = self.animations.idle
 end
@@ -270,7 +284,7 @@ function Fighter:getHitbox()
         local hitbox = self.hitboxes[self.attackType]
         local currentTime = love.timer.getTime()
 
-        if currentTime <= self.attackEndTime and currentTime >= (self.attackEndTime - hitbox.duration) then
+        if currentTime <= self.attackEndTime then
             local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
             return {
                 x = hitboxX,
@@ -284,19 +298,17 @@ function Fighter:getHitbox()
     return nil
 end
 
-
 function Fighter:renderHitbox()
     local hitbox = self.hitboxes[self.attackType]
     local currentTime = love.timer.getTime()
 
-    if currentTime <= self.attackEndTime and currentTime >= (self.attackEndTime - hitbox.duration) then
+    if currentTime <= self.attackEndTime then
         love.graphics.setColor(1, 0, 0, 1)
         local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
         love.graphics.rectangle('line', hitboxX, self.y + (self.height - hitbox.height) / 2, hitbox.width, hitbox.height)
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 end
-
 
 function Fighter:isHit(other)
     local hitbox = self:getHitbox()
