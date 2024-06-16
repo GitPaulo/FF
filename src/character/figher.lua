@@ -1,4 +1,6 @@
 local Anim8 = require 'lib.anim8'
+
+local Class = _G.Class;
 local Fighter = Class:extend()
 
 function Fighter:init(id, x, y, controls, hitboxes, attackDurations, speed, spriteConfigs)
@@ -10,7 +12,7 @@ function Fighter:init(id, x, y, controls, hitboxes, attackDurations, speed, spri
     self.speed = speed or 200
     self.controls = controls
     self.dy = 0
-    self.jumpStrength = -400
+    self.jumpStrength = -500
     self.gravity = 1000
     self.isJumping = false
     self.health = 100  -- Initial health for the fighter
@@ -84,10 +86,10 @@ function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, dur
     return Anim8.newAnimation(grid('1-' .. frameCount, 1), duration)
 end
 
-function Fighter:update(dt)
+function Fighter:update(dt, other)
     if self.state ~= 'attacking' and self.state ~= 'recovering' then
-        self:handleMovement(dt)
-        self:handleJumping(dt)
+        self:handleMovement(dt, other)
+        self:handleJumping(dt, other)
         self:handleAttacks(dt)
     end
 
@@ -98,37 +100,78 @@ function Fighter:update(dt)
     self:updateState()
 end
 
-function Fighter:handleMovement(dt)
+function Fighter:handleMovement(dt, other)
+    local windowWidth = love.graphics.getWidth()
+
     if love.keyboard.isDown(self.controls.left) then
-        self.x = self.x - self.speed * dt
-        if not self.isJumping then
-            self:setState('run')
+        local newX = self.x - self.speed * dt
+        if newX < 0 then
+            newX = 0
+        end
+        if not self:checkXCollision(newX, self.y, other) then
+            self.x = newX
+            if not self.isJumping then
+                self:setState('run')
+            end
         end
     elseif love.keyboard.isDown(self.controls.right) then
-        self.x = self.x + self.speed * dt
-        if not self.isJumping then
-            self:setState('run')
+        local newX = self.x + self.speed * dt
+        if newX + self.width > windowWidth then
+            newX = windowWidth - self.width
+        end
+        if not self:checkXCollision(newX, self.y, other) then
+            self.x = newX
+            if not self.isJumping then
+                self:setState('run')
+            end
         end
     elseif not self.isJumping then
         self:setState('idle')
     end
 end
 
-function Fighter:handleJumping(dt)
+function Fighter:checkXCollision(newX, newY, other)
+    return not (newX + self.width <= other.x or
+                newX >= other.x + other.width or
+                newY + self.height <= other.y or
+                newY >= other.y + other.height)
+end
+
+function Fighter:handleJumping(dt, other)
+    local windowHeight = love.graphics.getHeight()
+
     if self.isJumping then
         self.dy = self.dy + self.gravity * dt
-        self.y = self.y + self.dy * dt
-        if self.y >= 200 then -- assuming 200 is the ground level
-            self.y = 200
+        local newY = self.y + self.dy * dt
+
+        if newY >= windowHeight - self.height then -- assuming the bottom of the window is the ground level
+            self.y = windowHeight - self.height
             self.isJumping = false
             self.dy = 0
             self:setState('idle')
+        elseif not self:checkYCollision(newY, other) then
+            self.y = newY
+        else
+            if self.dy > 0 then -- Falling down
+                self.y = other.y - self.height
+            else -- Jumping up
+                self.y = other.y + other.height
+            end
+            self.dy = 0
+            self.isJumping = false
         end
     elseif love.keyboard.wasPressed(self.controls.jump) then
         self.dy = self.jumpStrength
         self.isJumping = true
         self:setState('jump')
     end
+end
+
+function Fighter:checkYCollision(newY, other)
+    return not (self.x + self.width <= other.x or
+                self.x >= other.x + other.width or
+                newY + self.height <= other.y or
+                newY >= other.y + other.height)
 end
 
 function Fighter:handleAttacks(dt)
@@ -174,7 +217,11 @@ end
 function Fighter:setState(state)
     if self.state ~= state then
         self.state = state
-        self.currentAnimation = self.animations[state] or self.animations.idle
+        if self.animations[state] then
+            self.currentAnimation = self.animations[state]
+        else
+            self.currentAnimation = self.animations.idle
+        end
         if self.currentAnimation then
             self.currentAnimation:gotoFrame(1)
         end
@@ -209,18 +256,6 @@ function Fighter:render()
     end
 end
 
-function Fighter:renderHitbox()
-    local hitbox = self.hitboxes[self.attackType]
-    local animationTime = self.attackDurations[self.attackType].animationTime
-    local currentTime = love.timer.getTime()
-
-    if currentTime <= self.attackEndTime - (self.attackDurations[self.attackType].duration - animationTime) then
-        love.graphics.setColor(1, 0, 0, 1)
-        love.graphics.rectangle('line', self.x + self.width, self.y + (self.height - hitbox.height) / 2, hitbox.width, hitbox.height)
-        love.graphics.setColor(1, 1, 1, 1) -- Reset color
-    end
-end
-
 function Fighter:getHitbox()
     if self.state == 'attacking' and self.attackType then
         local hitbox = self.hitboxes[self.attackType]
@@ -228,8 +263,9 @@ function Fighter:getHitbox()
         local currentTime = love.timer.getTime()
 
         if currentTime <= self.attackEndTime - (self.attackDurations[self.attackType].duration - animationTime) then
+            local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
             return {
-                x = self.x + self.width,
+                x = hitboxX,
                 y = self.y + (self.height - hitbox.height) / 2,
                 width = hitbox.width,
                 height = hitbox.height,
@@ -240,15 +276,38 @@ function Fighter:getHitbox()
     return nil
 end
 
+function Fighter:renderHitbox()
+    local hitbox = self.hitboxes[self.attackType]
+    local animationTime = self.attackDurations[self.attackType].animationTime
+    local currentTime = love.timer.getTime()
+
+    if currentTime <= self.attackEndTime - (self.attackDurations[self.attackType].duration - animationTime) then
+        love.graphics.setColor(1, 0, 0, 1)
+        local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
+        love.graphics.rectangle('line', hitboxX, self.y + (self.height - hitbox.height) / 2, hitbox.width, hitbox.height)
+        love.graphics.setColor(1, 1, 1, 1) -- Reset color
+    end
+end
+
 function Fighter:isHit(other)
     local hitbox = self:getHitbox()
     if hitbox and not self.damageApplied then
-        if hitbox.x < other.x + other.width and
-           hitbox.x + hitbox.width > other.x and
-           hitbox.y < other.y + other.height and
-           hitbox.y + hitbox.height > other.y then
-            self.damageApplied = true  -- Mark damage as applied
-            return true
+        if self.direction == 1 then
+            if hitbox.x < other.x + other.width and
+               hitbox.x + hitbox.width > other.x and
+               hitbox.y < other.y + other.height and
+               hitbox.y + hitbox.height > other.y then
+                self.damageApplied = true  -- Mark damage as applied
+                return true
+            end
+        else
+            if hitbox.x < other.x + other.width and
+               hitbox.x + hitbox.width > other.x and
+               hitbox.y < other.y + other.height and
+               hitbox.y + hitbox.height > other.y then
+                self.damageApplied = true  -- Mark damage as applied
+                return true
+            end
         end
     end
     return false

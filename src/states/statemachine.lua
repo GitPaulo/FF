@@ -1,3 +1,4 @@
+local Class = _G.Class
 local StateMachine = Class:extend()
 
 function StateMachine:init(states)
@@ -5,15 +6,22 @@ function StateMachine:init(states)
         draw = function() end,
         update = function() end,
         enter = function() end,
-        exit = function() end
+        exit = function() end,
+        mousepressed = function() end
     }
     self.states = states or {}
+
+    -- Add reference to the state machine in each state
+    for _, state in pairs(self.states) do
+        state.stateMachine = self
+    end
+
     self.current = self.empty
     self.currentStateName = nil
 end
 
 function StateMachine:change(stateName, enterParams)
-    assert(self.states[stateName]) -- state must exist!
+    assert(self.states[stateName], "State must exist!") -- state must exist!
     self.current:exit()
     self.current = self.states[stateName]
     self.current:enter(enterParams)

@@ -1,5 +1,8 @@
 require 'dependencies'
 
+local Menu, Game, StateMachine, love = _G.Menu, _G.Game, _G.StateMachine, _G.love;
+local gStateMachine;
+
 function love.load()
     love.graphics.setDefaultFilter('nearest', 'nearest')
 

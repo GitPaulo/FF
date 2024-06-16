@@ -1,3 +1,4 @@
+local Fighter = _G.Fighter;
 local Game = {}
 
 local SPRITE_WIDTH = 800
@@ -32,9 +33,9 @@ function Game:enter()
         medium = {width = 140, height = 25, recovery = 0.6, damage = 10},
         heavy = {width = 180, height = 30, recovery = 0.9, damage = 20}
     }, {
-        light = {duration = 0.2, animationTime = 0.1},
-        medium = {duration = 0.6, animationTime = 0.3},
-        heavy = {duration = 1.2, animationTime = 0.6}
+        light = {duration = 1, animationTime = 0.1},
+        medium = {duration = 2, animationTime = 0.3},
+        heavy = {duration = 3, animationTime = 0.6}
     }, 220, {
         idle = {'assets/Fighter1/Idle.png', 8},
         run = {'assets/Fighter1/Run.png', 8},
@@ -48,7 +49,7 @@ function Game:enter()
 
     self.fighter2 = Fighter:new(2, 600, 200, {
         left = 'left', right = 'right', jump = 'up',
-        lightAttack = 'kp1', mediumAttack = 'kp2', heavyAttack = 'kp3'
+        lightAttack = 'e', mediumAttack = 'r', heavyAttack = 't'
     }, {
         light = {width = 110, height = 20, recovery = 0.5, damage = 7},
         medium = {width = 160, height = 30, recovery = 0.8, damage = 12},
@@ -80,9 +81,9 @@ function Game:update(dt)
 
     self.timer = self.timer + dt * SPEED
 
-    -- Update fighters
-    self.fighter1:update(dt)
-    self.fighter2:update(dt)
+    -- Update fighters with the other fighter's state
+    self.fighter1:update(dt, self.fighter2)
+    self.fighter2:update(dt, self.fighter1)
 
     -- Check for collisions and apply damage
     if self.fighter1:isHit(self.fighter2) then
@@ -145,7 +146,7 @@ end
 
 function Game:keypressed(key)
     if self.gameOver and key == 'return' then
-        gStateMachine:change('menu')
+        self.stateMachine:change('menu')
     end
 end
 

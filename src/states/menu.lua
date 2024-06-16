@@ -12,7 +12,6 @@ local BUTTON_Y = WINDOW_HEIGHT / 2
 function Menu:enter()
     -- Set size
     love.window.setMode(WINDOW_WIDTH, WINDOW_HEIGHT)
-    
     -- Load font
     self.titleFont = love.graphics.newFont(32)
     self.buttonFont = love.graphics.newFont(20)
@@ -44,7 +43,7 @@ function Menu:mousepressed(x, y, button)
     if button == 1 then -- Left mouse button
         print("clicked 1")
         if x >= BUTTON_X and x <= BUTTON_X + BUTTON_WIDTH and y >= BUTTON_Y and y <= BUTTON_Y + BUTTON_HEIGHT then
-            gStateMachine:change("game")
+            self.stateMachine:change("game")
         end
     end
 end
