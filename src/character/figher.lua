@@ -2,31 +2,18 @@ local Anim8 = require 'lib.anim8'
 
 local Class, love, SoundManager = _G.Class, _G.love, _G.SoundManager
 local Fighter = Class:extend()
+local isDebug = false;
 
 function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfig, soundFXConfig)
+    -- Character Properties
     self.id = id
     self.x = x
     self.y = y
-    self.width = 50
-    self.height = 100
-    self.speed = traits.speed or 200
     self.controls = controls
-    self.dy = 0
-    self.jumpStrength = -500
-    self.gravity = 1000
-    self.isJumping = false
-    self.health = 100
-
-    self.state = 'idle'
-    self.attackType = nil
-    self.lastAttackType = nil
-    self.attackEndTime = 0
-    self.recoveryEndTime = 0
-    self.damageApplied = false
-    self.direction = (id == 2) and -1 or 1
-    self.isBlocking = false
-    self.isBlockingDamage = false
-
+    self.width = traits.width or 50
+    self.height = traits.height or 100
+    self.speed = traits.speed or 200
+    self.health = traits.health or 100
     self.hitboxes = hitboxes or {
         light = {width = 100, height = 20, recovery = 0.5, damage = 5},
         medium = {width = 150, height = 30, recovery = 0.7, damage = 10},
@@ -34,6 +21,23 @@ function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfig, soundF
     }
     self:validateHitboxes()
 
+    -- Character State
+    self.dy = 0
+    self.direction = (id == 2) and -1 or 1 -- Set direction to right for player 1 and left for player 2
+    self.state = 'idle'
+    self.gravity = 1000
+    self.jumpStrength = -525
+    self.attackType = nil
+    self.lastAttackType = nil
+    self.attackEndTime = 0
+    self.recoveryEndTime = 0
+    self.hitEndTime = 0
+    self.damageApplied = false
+    self.isBlocking = false
+    self.isBlockingDamage = false
+    self.isJumping = false
+
+    -- Animation and Sprites
     self.spritesheets = self:loadSpritesheets(spriteConfig)
     self.animations = self:loadAnimations(spriteConfig)
     self.sounds = self:loadSoundFX(soundFXConfig)
@@ -97,25 +101,26 @@ function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, dur
 end
 
 function Fighter:update(dt, other)
+    -- Movement
     self:handleMovement(dt, other)
     self:handleJumping(dt, other)
 
-    if self.state ~= 'recovering' then
+    -- Attacks
+    if not self.isRecovering then
         self:handleAttacks(dt)
     end
 
-    if self.currentAnimation then
-        self.currentAnimation:update(dt)
-    end
-
+    -- Update state
     self:updateState()
+    -- Update animation
+    self.currentAnimation:update(dt)
 end
 
 function Fighter:handleMovement(dt, other)
     local windowWidth = love.graphics.getWidth()
 
-    if self.state == 'attacking' or self.state == 'recovering' or self.state == 'hit' then
-        return;
+    if self.state == 'attacking' or self.state == 'hit' then
+        return
     end
 
     if love.keyboard.isDown(self.controls.left) then
@@ -142,10 +147,13 @@ function Fighter:handleMovement(dt, other)
                 self:setState('run')
             end
         end
+    elseif not self.isJumping then
+        self:setState('idle') -- Set state to idle if no movement keys are pressed
     end
 
     self.isBlocking = self.direction == other.direction
 end
+
 
 function Fighter:checkXCollision(newX, newY, other)
     return not (newX + self.width <= other.x or
@@ -157,6 +165,7 @@ end
 function Fighter:handleJumping(dt, other)
     local windowHeight = love.graphics.getHeight()
 
+    -- Update vertical position due to gravity
     self.dy = self.dy + self.gravity * dt
     local newY = self.y + self.dy * dt
 
@@ -166,9 +175,9 @@ function Fighter:handleJumping(dt, other)
         self.dy = 0
         if not love.keyboard.isDown(self.controls.left)
             and not love.keyboard.isDown(self.controls.right)
-                and self.state ~= 'attacking'
-                    and self.state ~= 'recovering'
-                        and self.state ~= 'hit' then
+            and self.state ~= 'attacking'
+            and not self.isRecovering
+            and self.state ~= 'hit' then
             self:setState('idle')
         end
     elseif not self:checkYCollision(newY, other) then
@@ -181,13 +190,21 @@ function Fighter:handleJumping(dt, other)
         end
         self.dy = 0
         self.isJumping = false
+        if self.state == 'jump' then
+            self:setState('idle') -- Ensure state is set to idle when landing
+        end
     end
 
-    if love.keyboard.wasPressed(self.controls.jump) and not self.isJumping and self.y >= windowHeight - self.height then
+    -- Only allow initiating a jump if not in hit, attacking, or recovering state
+    if not self.isJumping
+        and self.state ~= 'attacking'
+        and self.state ~= 'hit'
+        and not self.isRecovering
+        and love.keyboard.wasPressed(self.controls.jump)
+        and self.y >= windowHeight - self.height then
         self.dy = self.jumpStrength
         self.isJumping = true
         self:setState('jump')
-        -- Play jump sound effect
         SoundManager:playSound(self.sounds.jump)
     end
 end
@@ -200,8 +217,8 @@ function Fighter:checkYCollision(newY, other)
 end
 
 function Fighter:handleAttacks(dt)
-    if self.state == 'attacking' or self.state == 'recovering' or self.state == 'hit' then
-        return -- Prevent new attacks from starting if already attacking or recovering
+    if self.state == 'attacking' or self.state == 'hit' or self.isRecovering then
+        return -- Prevent new attacks from starting if already attacking or recovering or hit
     end
 
     if love.keyboard.wasPressed(self.controls.lightAttack) then
@@ -235,25 +252,27 @@ function Fighter:startRecovery()
     self.state = 'recovering'
     self.recoveryEndTime = love.timer.getTime() + self.hitboxes[self.attackType].recovery
     self.lastAttackType = self.attackType
-    print('recovering');
     self.attackType = nil
     self.currentAnimation = self.animations.idle
+    self.isRecovering = true
 end
 
 function Fighter:endRecovery()
-    self.state = 'idle'
+    if self.state == 'recovering' then
+        self.state = 'idle'
+    end
+    self.isRecovering = false -- garbage code because i don't want to separate state management
     self.currentAnimation = self.animations.idle
 end
 
 function Fighter:updateState()
     local currentTime = love.timer.getTime()
+
     if self.state == 'attacking' and currentTime >= self.attackEndTime then
         self:startRecovery()
-    elseif self.state == 'recovering' and currentTime >= self.recoveryEndTime then
+    elseif self.isRecovering and currentTime >= self.recoveryEndTime then
         self:endRecovery()
-    end
-
-    if self.state == 'hit' and currentTime >= self.hitEndTime then
+    elseif self.state == 'hit' and currentTime >= self.hitEndTime then
         self:setState('idle')
     end
 end
@@ -291,17 +310,19 @@ function Fighter:render()
     end
 
     -- Draw debug rectangle
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.rectangle('line', self.x, self.y, self.width, self.height)
+    if isDebug then
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.rectangle('line', self.x, self.y, self.width, self.height)
+    end
 
-    if self.state == 'attacking' and self.attackType then
+    if self.state == 'attacking' and self.attackType and isDebug then
         self:renderHitbox()
     end
 
     -- Draw blocking text
     if self.isBlockingDamage then
         love.graphics.setColor(1, 1, 0, 1)
-        love.graphics.print("Blocked!", self.x - 12, self.y - 20)
+        love.graphics.print("Blocked!", self.x - 14, self.y - 20)
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 end
