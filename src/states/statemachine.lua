@@ -3,11 +3,16 @@ local StateMachine = Class:extend()
 
 function StateMachine:init(states)
     self.empty = {
-        draw = function() end,
-        update = function() end,
-        enter = function() end,
-        exit = function() end,
-        mousepressed = function() end
+        draw = function()
+        end,
+        update = function()
+        end,
+        enter = function()
+        end,
+        exit = function()
+        end,
+        mousepressed = function()
+        end
     }
     self.states = states or {}
 
@@ -21,7 +26,7 @@ function StateMachine:init(states)
 end
 
 function StateMachine:change(stateName, enterParams)
-    assert(self.states[stateName], "State must exist!") -- state must exist!
+    assert(self.states[stateName], 'State must exist!') -- state must exist!
     if self.current.exit then
         self.current:exit()
     end

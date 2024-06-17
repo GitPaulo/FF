@@ -1,8 +1,8 @@
-local love = _G.love;
+local love = _G.love
 local SoundManager = {}
 
 function SoundManager:loadSound(filePath)
-    return love.audio.newSource(filePath, "static")
+    return love.audio.newSource(filePath, 'static')
 end
 
 function SoundManager:playSound(sound, params)
@@ -21,13 +21,16 @@ end
 
 function SoundManager:scheduleSound(sound, delay, repeatCount, volume, pitch)
     local currentTime = love.timer.getTime()
-    table.insert(self.scheduledSounds, {
-        time = currentTime + delay,
-        sound = sound,
-        repeatCount = repeatCount,
-        volume = volume,
-        pitch = pitch
-    })
+    table.insert(
+        self.scheduledSounds,
+        {
+            time = currentTime + delay,
+            sound = sound,
+            repeatCount = repeatCount,
+            volume = volume,
+            pitch = pitch
+        }
+    )
 end
 
 function SoundManager:executeSound(sound, repeatCount, volume, pitch)

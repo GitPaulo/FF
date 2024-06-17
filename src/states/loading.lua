@@ -18,7 +18,8 @@ function Loading:enter(params)
 end
 
 function Loading:loadFighters()
-    self.fighter1 = Fighter:new(
+    self.fighter1 =
+        Fighter:new(
         1,
         100,
         200,
@@ -56,7 +57,8 @@ function Loading:loadFighters()
         }
     )
 
-    self.fighter2 = Fighter:new(
+    self.fighter2 =
+        Fighter:new(
         2,
         600,
         200,

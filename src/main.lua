@@ -1,6 +1,13 @@
 require 'dependencies'
 
-local Menu, Game, Loading, StateMachine, love, SoundManager = _G.Menu, _G.Game, _G.Loading, _G.StateMachine, _G.love, _G.SoundManager
+local Menu, Game, Loading, StateMachine, love, SoundManager, isDebug =
+    _G.Menu,
+    _G.Game,
+    _G.Loading,
+    _G.StateMachine,
+    _G.love,
+    _G.SoundManager,
+    _G.isDebug
 local gStateMachine
 
 function love.load()
@@ -40,7 +47,9 @@ end
 
 function love.keypressed(key, scancode, isrepeat)
     love.keyboard.keysPressed[key] = true
-    print('Key Pressed: ', key) -- Debugging statement to check keypresses
+    if isDebug then
+        print('Key Pressed: ', key) -- Debugging statement to check keypresses
+    end
     if key == 'space' then
         if gStateMachine.currentStateName == 'menu' then
             gStateMachine:change(
@@ -53,13 +62,11 @@ function love.keypressed(key, scancode, isrepeat)
                     }
                 }
             )
-            print('Switched to loading')
         end
     end
     if key == 'escape' then
         if gStateMachine.currentStateName == 'game' then
             gStateMachine:change('menu')
-            print('Switched to menu')
         end
     end
 end

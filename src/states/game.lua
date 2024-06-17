@@ -107,7 +107,7 @@ function Game:render()
     -- Render game over screen if game is over
     if self.gameOver then
         love.graphics.printf(self.winner, 0, SPRITE_HEIGHT / 2 - 20, SPRITE_WIDTH, 'center')
-        love.graphics.printf("Press 'Enter' to return to Main Menu", 0, SPRITE_HEIGHT / 2 + 20, SPRITE_WIDTH, 'center')
+        love.graphics.printf("Press 'ESC' to return to Main Menu", 0, SPRITE_HEIGHT / 2 + 20, SPRITE_WIDTH, 'center')
     end
 end
 
