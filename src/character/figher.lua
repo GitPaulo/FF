@@ -1,9 +1,9 @@
 local Anim8 = require 'lib.anim8'
 
-local Class = _G.Class
+local Class, love, SoundManager = _G.Class, _G.love, _G.SoundManager
 local Fighter = Class:extend()
 
-function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfigs)
+function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfig, soundFXConfig)
     self.id = id
     self.x = x
     self.y = y
@@ -32,20 +32,12 @@ function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfigs)
         medium = {width = 150, height = 30, recovery = 0.7, damage = 10},
         heavy = {width = 200, height = 40, recovery = 1.0, damage = 20}
     }
-    self.spriteConfigs = spriteConfigs or {
-        idle = {'assets/Fighter' .. id .. '/Idle.png', 4},
-        run = {'assets/Fighter' .. id .. '/Run.png', 8},
-        jump = {'assets/Fighter' .. id .. '/Jump.png', 2},
-        light = {'assets/Fighter' .. id .. '/Attack1.png', 4},
-        medium = {'assets/Fighter' .. id .. '/Attack2.png', 4},
-        heavy = {'assets/Fighter' .. id .. '/Attack3.png', 4},
-        hit = {'assets/Fighter' .. id .. '/Take Hit.png', 3},
-        death = {'assets/Fighter' .. id .. '/Death.png', 7}
-    }
-
     self:validateHitboxes()
-    self.spritesheets = self:loadSpritesheets(spriteConfigs)
-    self.animations = self:loadAnimations(spriteConfigs)
+
+    self.spritesheets = self:loadSpritesheets(spriteConfig)
+    self.animations = self:loadAnimations(spriteConfig)
+    self.sounds = self:loadSoundFX(soundFXConfig)
+
     self.currentAnimation = self.animations.idle
 end
 
@@ -85,6 +77,14 @@ function Fighter:loadAnimations(configs)
     end
 
     return animations
+end
+
+function Fighter:loadSoundFX(configs)
+    local sounds = {}
+    for key, filePath in pairs(configs) do
+        sounds[key] = SoundManager:loadSound(filePath)
+    end
+    return sounds
 end
 
 function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, duration)
@@ -220,6 +220,10 @@ function Fighter:startAttack(attackType)
     self.attackEndTime = love.timer.getTime() + attackDuration
     self.currentAnimation = self.animations[attackType]
     self.currentAnimation:gotoFrame(1)
+
+    if self.sounds[attackType] then
+        SoundManager:playSound(self.sounds[attackType], { delay = attackDuration/2 });
+    end
 end
 
 function Fighter:startRecovery()
@@ -290,7 +294,6 @@ function Fighter:render()
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 end
-
 
 function Fighter:getHitbox()
     print(self.id, "Getting hitbox for attack type: ", self.attackType)
