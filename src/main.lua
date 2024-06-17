@@ -35,8 +35,6 @@ end
 function love.keypressed(key, scancode, isrepeat)
     love.keyboard.keysPressed[key] = true
     print("Key Pressed: ", key)  -- Debugging statement to check keypresses
-
-    -- Temporary state change for testing
     if key == 'space' then
         if gStateMachine.currentStateName == 'menu' then
             gStateMachine:change('loading', { 

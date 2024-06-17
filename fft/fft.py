@@ -21,8 +21,8 @@ def compute_fft(file_path, output_path):
         data = np.mean(data, axis=1)
     
     # Parameters
-    chunk_size = 2048  # You can adjust this size
-    step_size = chunk_size // 2  # Overlap
+    chunk_size = 1024  # Slightly larger chunk size
+    step_size = chunk_size // 2  # 50% overlap
     fft_data = []
     
     # Process audio in chunks
@@ -38,7 +38,13 @@ def compute_fft(file_path, output_path):
         else:
             normalized_fft = fft_magnitude
         
-        fft_data.append(normalized_fft.tolist())
+        # Downsample the FFT output less aggressively
+        downsampled_fft = normalized_fft[::2]  # Keep every 2nd value
+        
+        # Quantize the FFT magnitudes
+        quantized_fft = np.round(downsampled_fft * 100) / 100  # Round to 2 decimal places
+        
+        fft_data.append(quantized_fft.tolist())
     
     # Save FFT data to JSON file
     with open(output_path, 'w') as f:
