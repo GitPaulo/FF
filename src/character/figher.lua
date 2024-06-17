@@ -114,7 +114,7 @@ end
 function Fighter:handleMovement(dt, other)
     local windowWidth = love.graphics.getWidth()
 
-    if self.state == 'attacking' or self.state == 'hit' then
+    if self.state == 'attacking' or self.state == 'recovering' or self.state == 'hit' then
         return;
     end
 
@@ -142,8 +142,6 @@ function Fighter:handleMovement(dt, other)
                 self:setState('run')
             end
         end
-    elseif not self.isJumping then
-        self:setState('idle')
     end
 
     self.isBlocking = self.direction == other.direction

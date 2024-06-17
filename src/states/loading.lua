@@ -32,9 +32,9 @@ function Loading:loadFighters()
         },
         {speed = 200},
         {
-            light = {width = 95, height = 70, recovery = 1.2, damage = 7, duration = 0.5},
-            medium = {width = 125, height = 25, recovery = 2, damage = 15, duration = 0.8},
-            heavy = {width = 125, height = 25, recovery = 2.5, damage = 20, duration = 1.4}
+            light = {width = 95, height = 70, recovery = 0.2, damage = 7, duration = 0.5},
+            medium = {width = 125, height = 25, recovery = 0.5, damage = 15, duration = 0.8},
+            heavy = {width = 125, height = 25, recovery = 1, damage = 20, duration = 1.4}
         },
         {
             idle = {'assets/Fighter1/Idle.png', 8},
@@ -70,9 +70,9 @@ function Loading:loadFighters()
         },
         {speed = 160},
         {
-            light = {width = 90, height = 20, recovery = 1, damage = 7, duration = 0.5},
-            medium = {width = 90, height = 90, recovery = 1.6, damage = 12, duration = 0.7},
-            heavy = {width = 90, height = 90, recovery = 2.5, damage = 25, duration = 1.2}
+            light = {width = 90, height = 20, recovery = 0.1, damage = 7, duration = 0.5},
+            medium = {width = 90, height = 90, recovery = 0.4, damage = 12, duration = 0.7},
+            heavy = {width = 90, height = 90, recovery = 0.8, damage = 25, duration = 1.2}
         },
         {
             idle = {'assets/Fighter2/Idle.png', 4},
