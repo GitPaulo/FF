@@ -43,7 +43,7 @@ function Loading:loadFighters()
             light = {'assets/Fighter1/Attack1.png', 6},
             medium = {'assets/Fighter1/Attack2.png', 6},
             heavy = {'assets/Fighter1/Attack2.png', 6},
-            hit = {'assets/Fighter1/Take Hit.png', 4},
+            hit = {'assets/Fighter1/TakeHit.png', 4},
             death = {'assets/Fighter1/Death.png', 6}
         },
         {
@@ -81,7 +81,7 @@ function Loading:loadFighters()
             light = {'assets/Fighter2/Attack1.png', 4},
             medium = {'assets/Fighter2/Attack2.png', 4},
             heavy = {'assets/Fighter2/Attack2.png', 4},
-            hit = {'assets/Fighter2/Take Hit.png', 3},
+            hit = {'assets/Fighter2/TakeHit.png', 3},
             death = {'assets/Fighter2/Death.png', 7}
         },
         {
