@@ -14,6 +14,8 @@ function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfig, soundF
     self.height = traits.height or 100
     self.speed = traits.speed or 200
     self.health = traits.health or 100
+    self.stamina = traits.stamina or 100
+    self.maxStamina = traits.stamina or 100
     self.hitboxes = hitboxes or {
         light = {width = 100, height = 20, recovery = 0.5, damage = 5},
         medium = {width = 150, height = 30, recovery = 0.7, damage = 10},
@@ -36,6 +38,12 @@ function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfig, soundF
     self.isBlocking = false
     self.isBlockingDamage = false
     self.isJumping = false
+    self.isDashing = false
+    self.lastTapTime = {left = 0, right = 0}
+    self.dashDuration = 0.25
+    self.dashSpeed = 500
+    self.dashEndTime = 0
+    self.dashStaminaCost = 25
 
     -- Animation and Sprites
     self.spritesheets = self:loadSpritesheets(spriteConfig)
@@ -112,17 +120,53 @@ function Fighter:update(dt, other)
 
     -- Update state
     self:updateState()
+    -- Recover stamina if idle
+    self:recoverStamina(dt)
     -- Update animation
     self.currentAnimation:update(dt)
 end
 
 function Fighter:handleMovement(dt, other)
     local windowWidth = love.graphics.getWidth()
+    local currentTime = love.timer.getTime()
 
     if self.state == 'attacking' or self.state == 'hit' then
         return
     end
 
+    -- Handle dashing
+    if self.isDashing then
+        if currentTime < self.dashEndTime then
+            local dashSpeed = self.direction * self.dashSpeed * dt
+            local newX = self.x + dashSpeed
+            if newX < 0 then
+                newX = 0
+            elseif newX + self.width > windowWidth then
+                newX = windowWidth - self.width
+            end
+            if not self:checkXCollision(newX, self.y, other) then
+                self.x = newX
+            end
+            return -- Exit movement handling while dashing
+        else
+            self.isDashing = false
+        end
+    end
+
+    -- Detect double-tap for dashing
+    if love.keyboard.wasPressed(self.controls.left) then
+        if currentTime - (self.lastTapTime.left or 0) < 0.3 then
+            self:startDash(-1)
+        end
+        self.lastTapTime.left = currentTime
+    elseif love.keyboard.wasPressed(self.controls.right) then
+        if currentTime - (self.lastTapTime.right or 0) < 0.3 then
+            self:startDash(1)
+        end
+        self.lastTapTime.right = currentTime
+    end
+
+    -- Handle normal movement
     if love.keyboard.isDown(self.controls.left) then
         self.direction = -1 -- Set direction to left
         local newX = self.x - self.speed * dt
@@ -154,6 +198,23 @@ function Fighter:handleMovement(dt, other)
     self.isBlocking = self.direction == other.direction
 end
 
+function Fighter:startDash(direction)
+    if self.stamina >= self.dashStaminaCost then
+        self.isDashing = true
+        self.direction = direction
+        self.dashEndTime = love.timer.getTime() + self.dashDuration
+        self.stamina = self.stamina - self.dashStaminaCost -- Consume stamina
+    end
+end
+
+function Fighter:recoverStamina(dt)
+    if self.state == 'idle' and self.stamina < self.maxStamina then
+        self.stamina = self.stamina + self.dashStaminaCost * dt
+        if self.stamina > self.maxStamina then
+            self.stamina = self.maxStamina
+        end
+    end
+end
 
 function Fighter:checkXCollision(newX, newY, other)
     return not (newX + self.width <= other.x or

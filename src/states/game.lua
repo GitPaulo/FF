@@ -136,14 +136,23 @@ function Game:renderHealthBars()
     love.graphics.setColor(0, 1, 0, 1)
     love.graphics.rectangle('fill', padding, padding, barWidth * (self.fighter1.health / 100), barHeight)
 
+    -- Fighter 1 stamina bar
+    love.graphics.setColor(0, 0, 1, 1)
+    love.graphics.rectangle('fill', padding, padding + barHeight + 3, barWidth * (self.fighter1.stamina / self.fighter1.maxStamina), barHeight / 4)
+
     -- Fighter 2 health bar
     love.graphics.setColor(1, 0, 0, 1)
-    love.graphics.rectangle('fill', SPRITE_WIDTH - barWidth - padding, padding, barWidth, barHeight)
+    love.graphics.rectangle('fill', love.graphics.getWidth() - barWidth - padding, padding, barWidth, barHeight)
     love.graphics.setColor(0, 1, 0, 1)
-    love.graphics.rectangle('fill', SPRITE_WIDTH - barWidth - padding, padding, barWidth * (self.fighter2.health / 100), barHeight)
+    love.graphics.rectangle('fill', love.graphics.getWidth() - barWidth - padding, padding, barWidth * (self.fighter2.health / 100), barHeight)
+
+    -- Fighter 2 stamina bar
+    love.graphics.setColor(0, 0, 1, 1)
+    love.graphics.rectangle('fill', love.graphics.getWidth() - barWidth - padding, padding + barHeight + 3, barWidth * (self.fighter2.stamina / self.fighter2.maxStamina), barHeight / 4)
 
     love.graphics.setColor(1, 1, 1, 1) -- Reset color
 end
+
 
 function Game:renderFFT()
     local centerX = SPRITE_WIDTH / 2
