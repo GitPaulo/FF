@@ -32,9 +32,9 @@ function Loading:loadFighters()
         },
         {speed = 200},
         {
-            light = {width = 95, height = 70, recovery = 0.9, damage = 7, duration = 0.5},
-            medium = {width = 125, height = 25, recovery = 1.8, damage = 15, duration = 0.8},
-            heavy = {width = 125, height = 25, recovery = 2, damage = 20, duration = 1.4}
+            light = {width = 95, height = 70, recovery = 1.2, damage = 7, duration = 0.5},
+            medium = {width = 125, height = 25, recovery = 2, damage = 15, duration = 0.8},
+            heavy = {width = 125, height = 25, recovery = 2.5, damage = 20, duration = 1.4}
         },
         {
             idle = {'assets/Fighter1/Idle.png', 8},
@@ -49,7 +49,10 @@ function Loading:loadFighters()
         {
             light = 'assets/Fighter1/Attack1.wav',
             medium = 'assets/Fighter1/Attack1.wav',
-            heavy = 'assets/Fighter1/Attack1.wav'
+            heavy = 'assets/Fighter1/Attack1.wav',
+            hit = 'assets/Fighter1/Hit.mp3',
+            block = 'assets/Fighter1/Block.wav',
+            jump = 'assets/Fighter1/Jump.mp3'
         }
     )
 
@@ -65,9 +68,9 @@ function Loading:loadFighters()
             mediumAttack = 'o',
             heavyAttack = 'p'
         },
-        {speed = 150},
+        {speed = 160},
         {
-            light = {width = 90, height = 20, recovery = 0.7, damage = 7, duration = 0.5},
+            light = {width = 90, height = 20, recovery = 1, damage = 7, duration = 0.5},
             medium = {width = 90, height = 90, recovery = 1.6, damage = 12, duration = 0.7},
             heavy = {width = 90, height = 90, recovery = 2.5, damage = 25, duration = 1.2}
         },
@@ -84,7 +87,10 @@ function Loading:loadFighters()
         {
             light = 'assets/Fighter2/Attack1.wav',
             medium = 'assets/Fighter2/Attack1.wav',
-            heavy = 'assets/Fighter2/Attack1.wav'
+            heavy = 'assets/Fighter2/Attack1.wav',
+            hit = 'assets/Fighter1/Hit.mp3',
+            block = 'assets/Fighter2/Block.wav',
+            jump = 'assets/Fighter1/Jump.mp3'
         }
     )
 end

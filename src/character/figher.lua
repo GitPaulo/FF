@@ -114,7 +114,7 @@ end
 function Fighter:handleMovement(dt, other)
     local windowWidth = love.graphics.getWidth()
 
-    if self.state == 'attacking' then
+    if self.state == 'attacking' or self.state == 'hit' then
         return;
     end
 
@@ -169,7 +169,8 @@ function Fighter:handleJumping(dt, other)
         if not love.keyboard.isDown(self.controls.left)
             and not love.keyboard.isDown(self.controls.right)
                 and self.state ~= 'attacking'
-                    and self.state ~= 'recovering' then
+                    and self.state ~= 'recovering'
+                        and self.state ~= 'hit' then
             self:setState('idle')
         end
     elseif not self:checkYCollision(newY, other) then
@@ -188,6 +189,8 @@ function Fighter:handleJumping(dt, other)
         self.dy = self.jumpStrength
         self.isJumping = true
         self:setState('jump')
+        -- Play jump sound effect
+        SoundManager:playSound(self.sounds.jump)
     end
 end
 
@@ -199,7 +202,7 @@ function Fighter:checkYCollision(newY, other)
 end
 
 function Fighter:handleAttacks(dt)
-    if self.state == 'attacking' or self.state == 'recovering' then
+    if self.state == 'attacking' or self.state == 'recovering' or self.state == 'hit' then
         return -- Prevent new attacks from starting if already attacking or recovering
     end
 
@@ -221,8 +224,12 @@ function Fighter:startAttack(attackType)
     self.currentAnimation = self.animations[attackType]
     self.currentAnimation:gotoFrame(1)
 
+    -- Calculate the duration of the attack animation
+    local totalDuration = self.currentAnimation.totalDuration
+
     if self.sounds[attackType] then
-        SoundManager:playSound(self.sounds[attackType], { delay = attackDuration/2 });
+        -- Delay sound to match halfway through the attack animation duration
+        SoundManager:playSound(self.sounds[attackType], { delay = totalDuration / 2 })
     end
 end
 
@@ -247,7 +254,12 @@ function Fighter:updateState()
     elseif self.state == 'recovering' and currentTime >= self.recoveryEndTime then
         self:endRecovery()
     end
+
+    if self.state == 'hit' and currentTime >= self.hitEndTime then
+        self:setState('idle')
+    end
 end
+
 
 function Fighter:setState(state)
     if self.state ~= state then
@@ -261,6 +273,7 @@ function Fighter:setState(state)
 end
 
 function Fighter:render()
+    print("Rendering fighter", self.id, "with state:", self.state)
     -- Ensure the correct spritesheet is used for the current state
     local spriteName = self.state == 'attacking' and self.attackType or self.state
     local sprite = self.spritesheets[spriteName] or self.spritesheets.idle
@@ -296,7 +309,6 @@ function Fighter:render()
 end
 
 function Fighter:getHitbox()
-    print(self.id, "Getting hitbox for attack type: ", self.attackType)
     local hitbox = self.hitboxes[self.attackType]
     if not hitbox then
         return nil
@@ -338,6 +350,8 @@ function Fighter:isHit(other)
             hitbox.y + hitbox.height > self.y then
             if self.isBlocking then
                 self.isBlockingDamage = true
+                -- Play block sound effect if available
+                SoundManager:playSound(self.sounds.block)
                 return false
             end
             other.damageApplied = true  -- Mark damage as applied
@@ -354,6 +368,17 @@ function Fighter:takeDamage(damage)
         self:setState('death')
     else
         self:setState('hit')
+
+        -- Play hit animation
+        self.currentAnimation = self.animations.hit
+        self.currentAnimation:gotoFrame(1)
+
+        -- Play hit sound effect if available
+        SoundManager:playSound(self.sounds.hit)
+
+        -- Set state back to idle after hit animation duration
+        local hitDuration = self.currentAnimation.totalDuration
+        self.hitEndTime = love.timer.getTime() + hitDuration
     end
 end
 
