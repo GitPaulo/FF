@@ -26,6 +26,7 @@ I do not own any of the assets used in this game.
 
 ## TODO:
 
+- Fix F2 running anim bug after attack
 - Resize BLOCKED! text
 - Fix death animation and sound
 - Fix basic AI and passing logic
