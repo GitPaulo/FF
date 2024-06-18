@@ -12,6 +12,12 @@ A tiny Love2D fighting game.
 love src
 ```
 
+to generate FFT data
+
+```sh
+python fft/fft.py
+```
+
 > PS: Don't ask about the FFT code. It's dubious.
 
 ## Acknowledgements
