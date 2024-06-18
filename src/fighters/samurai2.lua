@@ -24,6 +24,7 @@ return {
         hit = 'assets/fighters/Samurai2/Hit.mp3',
         block = 'assets/fighters/Samurai2/Block.wav',
         jump = 'assets/fighters/Samurai2/Jump.mp3',
-        dash = 'assets/fighters/Samurai2/Dash.mp3'
+        dash = 'assets/fighters/Samurai2/Dash.mp3',
+        death = 'assets/fighters/Samurai2/Death.mp3'
     }
 }

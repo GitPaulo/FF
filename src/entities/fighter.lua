@@ -15,15 +15,18 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
     self.controls = controls
     self.speed = traits.speed or 200
     self.health = traits.health or 100
+    self.maxHealth = traits.health or 100
     self.stamina = traits.stamina or 100
     self.maxStamina = traits.stamina or 100
     self.jumpStrength = -(traits.jumpStrength or 600)
     self.dashSpeed = traits.dashSpeed or 500
-    self.hitboxes = hitboxes or {
-        light = {width = 100, height = 20, recovery = 0.5, damage = 5},
-        medium = {width = 150, height = 30, recovery = 0.7, damage = 10},
-        heavy = {width = 200, height = 40, recovery = 1.0, damage = 20}
-    }
+    self.hitboxes =
+        hitboxes or
+        {
+            light = {width = 100, height = 20, recovery = 0.5, damage = 5},
+            medium = {width = 150, height = 30, recovery = 0.7, damage = 10},
+            heavy = {width = 200, height = 40, recovery = 1.0, damage = 20}
+        }
 
     -- Helps a lot
     self:validateFighterParameters()
@@ -47,6 +50,7 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
     self.dashDuration = 0.25
     self.dashEndTime = 0
     self.dashStaminaCost = 25
+    self.deathAnimationFinished = false
 
     -- Animation and Sprites
     self.spritesheets = self:loadSpritesheets(spriteConfig)
@@ -57,20 +61,20 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
 end
 
 function Fighter:validateFighterParameters()
-    assert(self.id, "ID must be defined for fighter")
-    assert(self.name, "Name must be defined for fighter")
-    assert(self.x, "Starting X position must be defined for fighter")
-    assert(self.y, "Starting Y position must be defined for fighter")
-    assert(self.scale, "Scale must be defined for fighter")
-    assert(self.width, "Width must be defined for fighter")
-    assert(self.height, "Height must be defined for fighter")
-    assert(self.controls, "Controls must be defined for fighter")
+    assert(self.id, 'ID must be defined for fighter')
+    assert(self.name, 'Name must be defined for fighter')
+    assert(self.x, 'Starting X position must be defined for fighter')
+    assert(self.y, 'Starting Y position must be defined for fighter')
+    assert(self.scale, 'Scale must be defined for fighter')
+    assert(self.width, 'Width must be defined for fighter')
+    assert(self.height, 'Height must be defined for fighter')
+    assert(self.controls, 'Controls must be defined for fighter')
 
     for attackType, hitbox in pairs(self.hitboxes) do
-        assert(hitbox.width, "Width must be defined for hitbox: " .. attackType)
-        assert(hitbox.height, "Height must be defined for hitbox: " .. attackType)
-        assert(hitbox.recovery, "Recovery time must be defined for hitbox: " .. attackType)
-        assert(hitbox.damage, "Damage must be defined for hitbox: " .. attackType)
+        assert(hitbox.width, 'Width must be defined for hitbox: ' .. attackType)
+        assert(hitbox.height, 'Height must be defined for hitbox: ' .. attackType)
+        assert(hitbox.recovery, 'Recovery time must be defined for hitbox: ' .. attackType)
+        assert(hitbox.damage, 'Damage must be defined for hitbox: ' .. attackType)
     end
 end
 
@@ -79,7 +83,16 @@ function Fighter:loadSpritesheets(configs)
 
     for key, config in pairs(configs) do
         spritesheets[key] = love.graphics.newImage(config[1])
-        print("Loaded spritesheet for", key, "from", config[1], "with frame count:", config[2], "and dimensions:", spritesheets[key]:getDimensions())
+        print(
+            'Loaded spritesheet for',
+            key,
+            'from',
+            config[1],
+            'with frame count:',
+            config[2],
+            'and dimensions:',
+            spritesheets[key]:getDimensions()
+        )
     end
 
     return spritesheets
@@ -95,13 +108,7 @@ function Fighter:loadAnimations(configs)
         local frameWidth = math.floor(spritesheet:getWidth() / frameCount)
         local frameHeight = spritesheet:getHeight()
 
-        animations[key] = self:createAnimation(
-            spritesheet,
-            frameWidth,
-            frameHeight,
-            frameCount,
-            0.1
-        )
+        animations[key] = self:createAnimation(spritesheet, frameWidth, frameHeight, frameCount, 0.1)
     end
 
     return animations
@@ -117,7 +124,7 @@ end
 
 function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, duration)
     if not image then
-        print("Error: Image for animation is nil")
+        print('Error: Image for animation is nil')
         return nil
     end
     local grid = Anim8.newGrid(frameWidth, frameHeight, image:getWidth(), image:getHeight())
@@ -125,20 +132,26 @@ function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, dur
 end
 
 function Fighter:update(dt, other)
-    -- Movement
-    self:handleMovement(dt, other)
-    self:handleJumping(dt, other)
+    if self.state ~= 'death' then
+        -- Movement
+        self:handleMovement(dt, other)
+        self:handleJumping(dt, other)
 
-    -- Attacks
-    if not self.isRecovering then
-        self:handleAttacks(dt)
+        -- Attacks
+        if not self.isRecovering then
+            self:handleAttacks(dt)
+        end
+
+        -- Update state
+        self:updateState()
+        -- Recover stamina if idle
+        self:recoverStamina(dt)
+    else
+        -- Check if the death animation is complete
+        self:checkDeathAnimationFinished()
     end
 
-    -- Update state
-    self:updateState()
-    -- Recover stamina if idle
-    self:recoverStamina(dt)
-    -- Update animation
+    -- Always update animation
     self.currentAnimation:update(dt)
 end
 
@@ -235,15 +248,13 @@ function Fighter:recoverStamina(dt)
 end
 
 function Fighter:checkXCollision(newX, newY, other)
-    return not (newX + self.width <= other.x or
-                newX >= other.x + other.width or
-                newY + self.height <= other.y or
-                newY >= other.y + other.height)
+    return not (newX + self.width <= other.x or newX >= other.x + other.width or newY + self.height <= other.y or
+        newY >= other.y + other.height)
 end
 
 function Fighter:handleJumping(dt, other)
     local windowHeight = love.graphics.getHeight()
-    local groundLevel = windowHeight - 6 -- from the bottom
+    local groundLevel = windowHeight - 10 -- from the bottom
 
     -- Update vertical position due to gravity
     self.dy = self.dy + self.gravity * dt
@@ -253,11 +264,12 @@ function Fighter:handleJumping(dt, other)
         self.y = groundLevel - self.height
         self.isJumping = false
         self.dy = 0
-        if not love.keyboard.isDown(self.controls.left)
-            and not love.keyboard.isDown(self.controls.right)
-            and self.state ~= 'attacking'
-            and not self.isRecovering
-            and self.state ~= 'hit' then
+        if
+            not love.keyboard.isDown(self.controls.left) and not love.keyboard.isDown(self.controls.right) and
+                self.state ~= 'attacking' and
+                not self.isRecovering and
+                self.state ~= 'hit'
+         then
             self:setState('idle')
         end
     elseif not self:checkYCollision(newY, other) then
@@ -276,12 +288,11 @@ function Fighter:handleJumping(dt, other)
     end
 
     -- Only allow initiating a jump if not in hit, attacking, or recovering state
-    if not self.isJumping
-        and self.state ~= 'attacking'
-        and self.state ~= 'hit'
-        and not self.isRecovering
-        and love.keyboard.wasPressed(self.controls.jump)
-        and self.y >= groundLevel - self.height then
+    if
+        not self.isJumping and self.state ~= 'attacking' and self.state ~= 'hit' and not self.isRecovering and
+            love.keyboard.wasPressed(self.controls.jump) and
+            self.y >= groundLevel - self.height
+     then
         self.dy = self.jumpStrength
         self.isJumping = true
         self:setState('jump')
@@ -290,10 +301,8 @@ function Fighter:handleJumping(dt, other)
 end
 
 function Fighter:checkYCollision(newY, other)
-    return not (self.x + self.width <= other.x or
-                self.x >= other.x + other.width or
-                newY + self.height <= other.y or
-                newY >= other.y + other.height)
+    return not (self.x + self.width <= other.x or self.x >= other.x + other.width or newY + self.height <= other.y or
+        newY >= other.y + other.height)
 end
 
 function Fighter:handleAttacks(dt)
@@ -324,7 +333,7 @@ function Fighter:startAttack(attackType)
 
     if self.sounds[attackType] then
         -- Delay sound to match halfway through the attack animation duration
-        SoundManager:playSound(self.sounds[attackType], { delay = totalDuration / 2 })
+        SoundManager:playSound(self.sounds[attackType], {delay = totalDuration / 2})
     end
 end
 
@@ -359,7 +368,6 @@ function Fighter:updateState()
     end
 end
 
-
 function Fighter:setState(state)
     if self.state ~= state then
         self.state = state
@@ -378,7 +386,18 @@ function Fighter:render()
     local sprite = self.spritesheets[spriteName] or self.spritesheets.idle
 
     if isDebug and self.id == 1 then
-        print("[Fighter " .. self.id .. "]:", spriteName, "x", self.x, "y", self.y, "state:", self.state, "attackType:", self.attackType)
+        print(
+            '[Fighter ' .. self.id .. ']:',
+            spriteName,
+            'x',
+            self.x,
+            'y',
+            self.y,
+            'state:',
+            self.state,
+            'attackType:',
+            self.attackType
+        )
     end
 
     if self.currentAnimation then
@@ -395,17 +414,17 @@ function Fighter:render()
         local offsetY = (self.height - (frameHeight * scaleY)) / 2
 
         -- Draw the animation with scaling and positioning adjustments
-        local angle = 0;
+        local angle = 0
         local posX = self.x + offsetX + (self.scale.ox * self.direction)
         local posY = self.y + offsetY + self.scale.oy
         self.currentAnimation:draw(sprite, posX, posY, angle, scaleX, scaleY)
 
         if isDebug and self.id == 1 then
             print(self.scale.ox, self.scale.oy, posX, posY)
-            print("[Sprite]:", posX, posY, "<- pos, scale ->", scaleX, scaleY)
+            print('[Sprite]:', posX, posY, '<- pos, scale ->', scaleX, scaleY)
         end
     else
-        print("Error: No current animation to draw for state:", self.state)
+        print('Error: No current animation to draw for state:', self.state)
     end
 
     -- Draw debug rectangle with dot
@@ -425,11 +444,10 @@ function Fighter:render()
     -- Draw blocking text
     if self.isBlockingDamage then
         love.graphics.setColor(1, 1, 0, 1)
-        love.graphics.print("Blocked!", self.x - 14, self.y - 20)
+        love.graphics.print('Blocked!', self.x - 14, self.y - 20)
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 end
-
 
 function Fighter:getHitbox()
     local hitbox = self.hitboxes[self.attackType]
@@ -453,7 +471,13 @@ function Fighter:renderHitbox()
     if currentTime <= self.attackEndTime then
         love.graphics.setColor(1, 0, 0, 1)
         local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
-        love.graphics.rectangle('line', hitboxX, self.y + (self.height - hitbox.height) / 2, hitbox.width, hitbox.height)
+        love.graphics.rectangle(
+            'line',
+            hitboxX,
+            self.y + (self.height - hitbox.height) / 2,
+            hitbox.width,
+            hitbox.height
+        )
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 end
@@ -467,17 +491,17 @@ function Fighter:isHit(other)
 
     local hitbox = other:getHitbox()
     if hitbox and not other.damageApplied then
-        if hitbox.x < self.x + self.width and
-            hitbox.x + hitbox.width > self.x and
-            hitbox.y < self.y + self.height and
-            hitbox.y + hitbox.height > self.y then
+        if
+            hitbox.x < self.x + self.width and hitbox.x + hitbox.width > self.x and hitbox.y < self.y + self.height and
+                hitbox.y + hitbox.height > self.y
+         then
             if self.isBlocking then
                 self.isBlockingDamage = true
                 -- Play block sound effect if available
                 SoundManager:playSound(self.sounds.block)
                 return false
             end
-            other.damageApplied = true  -- Mark damage as applied
+            other.damageApplied = true -- Mark damage as applied
             return true
         end
     end
@@ -487,8 +511,19 @@ end
 function Fighter:takeDamage(damage)
     self.health = self.health - damage
     if self.health <= 0 then
+        -- Dead
         self.health = 0
         self:setState('death')
+
+        -- Play death animation
+        self.currentAnimation = self.animations.death
+        self.currentAnimation:gotoFrame(1)
+
+        -- Play death sound
+        SoundManager:playSound(self.sounds.death)
+
+        -- Set the start time for the death animation
+        self.deathAnimationStartTime = love.timer.getTime()
     else
         self:setState('hit')
 
@@ -502,6 +537,19 @@ function Fighter:takeDamage(damage)
         -- Set state back to idle after hit animation duration
         local hitDuration = self.currentAnimation.totalDuration
         self.hitEndTime = love.timer.getTime() + hitDuration
+    end
+end
+
+function Fighter:checkDeathAnimationFinished()
+    if self.state == 'death' then
+        local currentTime = love.timer.getTime()
+        local elapsedTime = currentTime - self.deathAnimationStartTime
+        local deathDuration = self.currentAnimation.totalDuration
+        local padding = 0.2 -- make it a little longer to look better
+
+        if elapsedTime >= deathDuration + padding then
+            self.deathAnimationFinished = true
+        end
     end
 end
 

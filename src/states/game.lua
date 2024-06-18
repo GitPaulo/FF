@@ -7,7 +7,7 @@ local FRAMES = 38
 local SPEED = 10
 
 function Game:enter(params)
-    self.background = love.graphics.newImage("assets/background_game_spritesheet.png")
+    self.background = love.graphics.newImage('assets/background_game_spritesheet.png')
     self:buildBackground()
 
     -- Game state
@@ -38,7 +38,7 @@ end
 
 function Game:playCurrentSong()
     local song = self.songs[self.currentSongIndex]
-    self.music = love.audio.newSource(song.path, "stream")
+    self.music = love.audio.newSource(song.path, 'stream')
     self.music:setLooping(false)
     self.music:play()
 
@@ -69,12 +69,12 @@ function Game:update(dt)
     end
 
     -- Check for game over
-    if self.fighter1.health <= 0 then
+    if self.fighter1.health <= 0 and self.fighter1.deathAnimationFinished then
         self.gameOver = true
-        self.winner = "Fighter 2 Wins!"
-    elseif self.fighter2.health <= 0 then
+        self.winner = 'Fighter 2 Wins!'
+    elseif self.fighter2.health <= 0 and self.fighter2.deathAnimationFinished then
         self.gameOver = true
-        self.winner = "Fighter 1 Wins!"
+        self.winner = 'Fighter 1 Wins!'
     end
 
     -- Update FFT data index
@@ -112,13 +112,16 @@ function Game:render()
 end
 
 function Game:buildBackground()
-   self.background_quads = {}
+    self.background_quads = {}
 
     local imgWidth, imgHeight = self.background:getWidth(), self.background:getHeight()
 
     for i = 0, FRAMES - 1 do
         local x = i * SPRITE_WIDTH
-        table.insert(self.background_quads, love.graphics.newQuad(x, 0, SPRITE_WIDTH, SPRITE_HEIGHT, imgWidth, imgHeight))
+        table.insert(
+            self.background_quads,
+            love.graphics.newQuad(x, 0, SPRITE_WIDTH, SPRITE_HEIGHT, imgWidth, imgHeight)
+        )
     end
 
     -- Set the window size to match the dimensions of a single sprite
@@ -134,25 +137,54 @@ function Game:renderHealthBars()
     love.graphics.setColor(1, 0, 0, 1)
     love.graphics.rectangle('fill', padding, padding, barWidth, barHeight)
     love.graphics.setColor(0, 1, 0, 1)
-    love.graphics.rectangle('fill', padding, padding, barWidth * (self.fighter1.health / 100), barHeight)
+    love.graphics.rectangle(
+        'fill',
+        padding,
+        padding,
+        barWidth * (self.fighter1.health / self.fighter1.maxHealth),
+        barHeight
+    )
 
     -- Fighter 1 stamina bar
     love.graphics.setColor(0, 0, 1, 1)
-    love.graphics.rectangle('fill', padding, padding + barHeight + 3, barWidth * (self.fighter1.stamina / self.fighter1.maxStamina), barHeight / 4)
+    love.graphics.rectangle(
+        'fill',
+        padding,
+        padding + barHeight + 3,
+        barWidth * (self.fighter1.stamina / self.fighter1.maxStamina),
+        barHeight / 4
+    )
 
     -- Fighter 2 health bar
     love.graphics.setColor(1, 0, 0, 1)
-    love.graphics.rectangle('fill', love.graphics.getWidth() - barWidth - padding, padding, barWidth, barHeight)
+    love.graphics.rectangle(
+        'fill',
+        love.graphics.getWidth() - barWidth - padding,
+        padding,
+        barWidth,
+        barHeight
+    )
     love.graphics.setColor(0, 1, 0, 1)
-    love.graphics.rectangle('fill', love.graphics.getWidth() - barWidth - padding, padding, barWidth * (self.fighter2.health / 100), barHeight)
+    love.graphics.rectangle(
+        'fill',
+        love.graphics.getWidth() - barWidth - padding,
+        padding,
+        barWidth * (self.fighter2.health / self.fighter2.maxHealth),
+        barHeight
+    )
 
     -- Fighter 2 stamina bar
     love.graphics.setColor(0, 0, 1, 1)
-    love.graphics.rectangle('fill', love.graphics.getWidth() - barWidth - padding, padding + barHeight + 3, barWidth * (self.fighter2.stamina / self.fighter2.maxStamina), barHeight / 4)
+    love.graphics.rectangle(
+        'fill',
+        love.graphics.getWidth() - barWidth - padding,
+        padding + barHeight + 3,
+        barWidth * (self.fighter2.stamina / self.fighter2.maxStamina),
+        barHeight / 4
+    )
 
     love.graphics.setColor(1, 1, 1, 1) -- Reset color
 end
-
 
 function Game:renderFFT()
     local centerX = SPRITE_WIDTH / 2
