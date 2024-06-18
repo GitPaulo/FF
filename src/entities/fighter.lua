@@ -57,7 +57,11 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
     self.animations = self:loadAnimations(spriteConfig)
     self.sounds = self:loadSoundFX(soundFXConfig)
 
+    -- Set the default animation to idle
     self.currentAnimation = self.animations.idle
+
+    -- Font
+    self.blockedFont = love.graphics.newFont(18)
 end
 
 function Fighter:validateFighterParameters()
@@ -133,26 +137,59 @@ end
 
 function Fighter:update(dt, other)
     if self.state ~= 'death' then
-        -- Movement
-        self:handleMovement(dt, other)
-        self:handleJumping(dt, other)
-
-        -- Attacks
-        if not self.isRecovering then
-            self:handleAttacks(dt)
-        end
-
-        -- Update state
-        self:updateState()
-        -- Recover stamina if idle
-        self:recoverStamina(dt)
+        -- Handle all actions except death
+        self:updateActions(dt, other)
+        -- Update the state of the fighter after handling actions
+        self:updateState(dt)
     else
-        -- Check if the death animation is complete
+        -- Handle death animation
         self:checkDeathAnimationFinished()
     end
 
-    -- Always update animation
+    -- Always update the current animation
     self.currentAnimation:update(dt)
+end
+
+function Fighter:updateActions(dt, other)
+    self:handleMovement(dt, other)
+    self:handleJumping(dt, other)
+    self:handleAttacks()
+end
+
+function Fighter:updateState(dt)
+    local currentTime = love.timer.getTime()
+    local isAttacking = self.state == 'attacking'
+    local isHit = self.state == 'hit'
+    local isRecoveryPeriodOver = currentTime >= self.recoveryEndTime
+    local isAttackPeriodOver = currentTime >= self.attackEndTime
+    local isHitPeriodOver = currentTime >= self.hitEndTime
+    local isIdle = self.state == 'idle'
+
+    -- Transition from attacking to recovery if the attack period has ended
+    if isAttacking and isAttackPeriodOver then
+        self.attackType = nil
+        if not self.isRecovering then
+            self:startRecovery()
+        else
+            self:setState('idle')
+        end
+    end
+
+    -- End recovery period if the recovery time has passed
+    if self.isRecovering and isRecoveryPeriodOver then
+        self:endRecovery()
+        self:setState('idle')
+    end
+
+    -- Transition from hit to idle if the hit period has ended
+    if isHit and isHitPeriodOver then
+        self:setState('idle')
+    end
+
+    -- Recover stamina if the fighter is idle
+    if isIdle then
+        self:recoverStamina(dt)
+    end
 end
 
 function Fighter:handleMovement(dt, other)
@@ -183,17 +220,17 @@ function Fighter:handleMovement(dt, other)
     end
 
     -- Detect double-tap for dashing
-        if love.keyboard.wasPressed(self.controls.left) then
-            if currentTime - (self.lastTapTime.left or 0) < 0.3 then
-                self:startDash(-1)
-            end
-            self.lastTapTime.left = currentTime
-        elseif love.keyboard.wasPressed(self.controls.right) then
-            if currentTime - (self.lastTapTime.right or 0) < 0.3 then
-                self:startDash(1)
-            end
-            self.lastTapTime.right = currentTime
+    if love.keyboard.wasPressed(self.controls.left) then
+        if currentTime - (self.lastTapTime.left or 0) < 0.3 then
+            self:startDash(-1)
         end
+        self.lastTapTime.left = currentTime
+    elseif love.keyboard.wasPressed(self.controls.right) then
+        if currentTime - (self.lastTapTime.right or 0) < 0.3 then
+            self:startDash(1)
+        end
+        self.lastTapTime.right = currentTime
+    end
 
     -- Handle normal movement
     if love.keyboard.isDown(self.controls.left) then
@@ -308,7 +345,7 @@ function Fighter:checkYCollision(newY, other)
         newY >= other.y + other.height)
 end
 
-function Fighter:handleAttacks(dt)
+function Fighter:handleAttacks()
     if self.state == 'attacking' or self.state == 'hit' or self.isRecovering then
         return -- Prevent new attacks from starting if already attacking or recovering or hit
     end
@@ -323,69 +360,56 @@ function Fighter:handleAttacks(dt)
 end
 
 function Fighter:startAttack(attackType)
-    self.state = 'attacking'
-    self.attackType = attackType
+    self.state = 'attacking' -- Dont use self.setState() here
+    self.attackType = attackType -- gets cleared
+    self.lastAttackType = self.attackType
     self.damageApplied = false
-    local attackDuration = self.hitboxes[attackType].duration
-    self.attackEndTime = love.timer.getTime() + attackDuration
-    self.currentAnimation = self.animations[attackType]
-    self.currentAnimation:gotoFrame(1)
 
     -- Calculate the duration of the attack animation
+    local attackDuration = self.hitboxes[attackType].duration
     local totalDuration = self.currentAnimation.totalDuration
-
+    self.attackEndTime = love.timer.getTime() + attackDuration
     if self.sounds[attackType] then
         -- Delay sound to match halfway through the attack animation duration
         SoundManager:playSound(self.sounds[attackType], {delay = totalDuration / 2})
     end
+    -- Set the current animation to the attack animation
+    self.currentAnimation = self.animations[attackType]
+    self.currentAnimation:gotoFrame(1)
 end
 
 function Fighter:startRecovery()
-    self.state = 'recovering'
-    self.recoveryEndTime = love.timer.getTime() + self.hitboxes[self.attackType].recovery
-    self.lastAttackType = self.attackType
-    self.attackType = nil
-    self.currentAnimation = self.animations.idle
-    self.currentAnimation:gotoFrame(1)
+    if _G.isDebug then
+        print('Recovery started for', self.id, self.attackType, self.lastAttackType)
+    end
+    self.recoveryEndTime = love.timer.getTime() + self.hitboxes[self.lastAttackType].recovery
     self.isRecovering = true
 end
 
 function Fighter:endRecovery()
-    if self.state == 'recovering' then
-        self.state = 'idle'
+    if _G.isDebug then
+        print('Recovery ended for', self.id)
     end
-    self.isRecovering = false -- garbage code because i don't want to separate state management
-    self.currentAnimation = self.animations.idle
+    self.isRecovering = false
+end
+
+function Fighter:setState(newState)
+    -- Only change state if the new state is different from the current state
+    if self.state == newState then
+        return
+    end
+    self.state = newState
+
+    -- Determine the appropriate animation for the new state
+    local newAnimation = self.animations[newState] or self.animations.idle
+    self.currentAnimation = newAnimation
     self.currentAnimation:gotoFrame(1)
 end
 
-function Fighter:updateState()
-    local currentTime = love.timer.getTime()
-
-    if self.state == 'attacking' and currentTime >= self.attackEndTime then
-        self:startRecovery()
-    elseif self.isRecovering and currentTime >= self.recoveryEndTime then
-        self:endRecovery()
-    elseif self.state == 'hit' and currentTime >= self.hitEndTime then
-        self:setState('idle')
-    end
-end
-
-function Fighter:setState(state)
-    if self.state ~= state then
-        self.state = state
-        if self.animations[state] then
-            self.currentAnimation = self.animations[state]
-        else
-            self.currentAnimation = self.animations.idle
-        end
-        self.currentAnimation:gotoFrame(1)
-    end
-end
-
 function Fighter:render()
-    -- Ensure the correct spritesheet is used for the current state
-    local spriteName = self.state == 'attacking' and self.attackType or self.state
+    -- Sprite config list includes states and attack types as key for animations
+    -- self.attackType gets cleared on recovery start
+    local spriteName = self.state == 'attacking' and self.lastAttackType or self.state
     local sprite = self.spritesheets[spriteName] or self.spritesheets.idle
 
     if _G.isDebug and self.id == 1 then
@@ -446,6 +470,7 @@ function Fighter:render()
 
     -- Draw blocking text
     if self.isBlockingDamage then
+        love.graphics.setFont(self.blockedFont)
         love.graphics.setColor(1, 1, 0, 1)
         love.graphics.print('Blocked!', self.x - 14, self.y - 20)
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
