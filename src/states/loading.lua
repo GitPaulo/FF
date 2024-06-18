@@ -4,8 +4,13 @@ local Fighter, love = _G.Fighter, _G.love
 local Loading = {}
 
 function Loading:enter(params)
+    self.useAI = params.useAI or false
     self.selectedFighters = params.selectedFighters
     self.songs = params.songs
+
+    assert(self.songs, 'Songs must be provided to the loading state')
+    assert(self.selectedFighters, 'Selected fighters must be provided to the loading state')
+
     self.currentSongIndex = 1
     self.loadingStarted = false
     self.startTime = love.timer.getTime()
@@ -14,7 +19,10 @@ function Loading:enter(params)
         function()
             self:loadSongs()
             self:loadFighters()
-            self.stateMachine:change('game', {songs = self.songs, fighter1 = self.fighter1, fighter2 = self.fighter2})
+            self.stateMachine:change(
+                'game',
+                {useAi = self.useAI, songs = self.songs, fighter1 = self.fighter1, fighter2 = self.fighter2}
+            )
         end
     )
 end
@@ -59,7 +67,7 @@ function Loading:loadFighters()
 
     self.fighter2 =
         Fighter:new(
-        2,
+        self.useAI and 3 or 2,
         fighter2Data.name,
         startPos2[1],
         startPos2[2],

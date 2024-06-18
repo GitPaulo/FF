@@ -2,35 +2,53 @@ local love = _G.love
 local Menu = {}
 
 local TITLE_TEXT = 'Tiny Fighting Game'
-local BUTTON_TEXT = 'Play'
+local PLAY_BUTTON_TEXT = 'Play'
 local CHARACTER_SELECT_TEXT = 'Characters'
-local BUTTON_WIDTH = 160
-local BUTTON_HEIGHT = 40
+local SETTINGS_TEXT = 'Settings'
+
+local BUTTON_WIDTH = 140
+local BUTTON_HEIGHT = 35
 local WINDOW_WIDTH = 425
 local WINDOW_HEIGHT = 281
 local BUTTON_X = (WINDOW_WIDTH - BUTTON_WIDTH) / 2
-local BUTTON_Y = WINDOW_HEIGHT / 1.5
-local CHARACTER_BUTTON_Y = BUTTON_Y - BUTTON_HEIGHT - 10
+
+local SETTINGS_BUTTON_Y = WINDOW_HEIGHT / 1.45 - 2 * BUTTON_HEIGHT - 20
+local CHARACTER_BUTTON_Y = SETTINGS_BUTTON_Y + BUTTON_HEIGHT + 10
+local PLAY_BUTTON_Y = CHARACTER_BUTTON_Y + BUTTON_HEIGHT + 10
 
 local FRAMES = 120
 local SPEED = 10
 
-local buttonHover = false
+local playButtonHover = false
 local characterButtonHover = false
+local settingsButtonHover = false
 
 function Menu:enter(params)
+    -- For first open
+    params = params or {}
+
+    -- Settings
+    self.settings =
+        params.settings or
+        {
+            useAI = false,
+            muteSound = false
+        }
+
     -- Selected Fighters
-    self.selectedFighters = params and params.selectedFighters or { 'Samurai1', 'Samurai2' }
+    self.selectedFighters = params.selectedFighters or {'Samurai1', 'Samurai2'}
 
     -- Background
     self.background = love.graphics.newImage('assets/background_menu_spritesheet.png')
     self:buildBackground()
 
-    -- Set size
+    -- Set window size
     love.window.setMode(WINDOW_WIDTH, WINDOW_HEIGHT)
-    -- Load font
+
+    -- Load fonts
     self.titleFont = love.graphics.newFont(32)
     self.buttonFont = love.graphics.newFont(20)
+
     -- Initialize timer and titleScale
     self.timer = 0
     self.titleScale = 1
@@ -53,14 +71,18 @@ end
 
 function Menu:update(dt)
     self.timer = self.timer + dt * SPEED
-    -- Update the button hover state
+
+    -- Update the button hover states
     local mouseX, mouseY = love.mouse.getPosition()
-    buttonHover =
-        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= BUTTON_Y and
-        mouseY <= BUTTON_Y + BUTTON_HEIGHT
+    playButtonHover =
+        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= PLAY_BUTTON_Y and
+        mouseY <= PLAY_BUTTON_Y + BUTTON_HEIGHT
     characterButtonHover =
         mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= CHARACTER_BUTTON_Y and
         mouseY <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT
+    settingsButtonHover =
+        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= SETTINGS_BUTTON_Y and
+        mouseY <= SETTINGS_BUTTON_Y + BUTTON_HEIGHT
 
     -- Update the title animation
     self.titleScale = 1 + 0.1 * math.sin(love.timer.getTime() * 3) -- Oscillating scale
@@ -76,13 +98,22 @@ function Menu:render()
     -- Draw the title with animation
     love.graphics.setFont(self.titleFont)
     love.graphics.push()
-    love.graphics.translate(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 4)
+    love.graphics.translate(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 5)
     love.graphics.scale(self.titleScale, self.titleScale)
     love.graphics.printf(TITLE_TEXT, -WINDOW_WIDTH / 2, 0, WINDOW_WIDTH, 'center')
     love.graphics.pop()
 
-    -- Draw the character select button with hover effect
+    -- Draw the settings button with hover effect
     love.graphics.setFont(self.buttonFont)
+    if settingsButtonHover then
+        love.graphics.setColor(1, 1, 0.8, 0.8) -- Slightly transparent white for hover
+    else
+        love.graphics.setColor(1, 1, 1, 1) -- Solid white for normal
+    end
+    love.graphics.rectangle('line', BUTTON_X, SETTINGS_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    love.graphics.printf(SETTINGS_TEXT, BUTTON_X, SETTINGS_BUTTON_Y + (BUTTON_HEIGHT / 5), BUTTON_WIDTH, 'center')
+
+    -- Draw the character select button with hover effect
     if characterButtonHover then
         love.graphics.setColor(1, 1, 0.8, 0.8) -- Slightly transparent white for hover
     else
@@ -97,14 +128,14 @@ function Menu:render()
         'center'
     )
 
-    -- Draw the start game button with hover effect
-    if buttonHover then
+    -- Draw the play button with hover effect
+    if playButtonHover then
         love.graphics.setColor(1, 1, 0.8, 0.8) -- Slightly transparent white for hover
     else
         love.graphics.setColor(1, 1, 1, 1) -- Solid white for normal
     end
-    love.graphics.rectangle('line', BUTTON_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
-    love.graphics.printf(BUTTON_TEXT, BUTTON_X, BUTTON_Y + (BUTTON_HEIGHT / 4), BUTTON_WIDTH, 'center')
+    love.graphics.rectangle('line', BUTTON_X, PLAY_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    love.graphics.printf(PLAY_BUTTON_TEXT, BUTTON_X, PLAY_BUTTON_Y + (BUTTON_HEIGHT / 5), BUTTON_WIDTH, 'center')
 
     -- Reset color
     love.graphics.setColor(1, 1, 1)
@@ -115,41 +146,41 @@ end
 
 function Menu:mousepressed(x, y, button)
     if button == 1 then -- Left mouse button
-        if x >= BUTTON_X and x <= BUTTON_X + BUTTON_WIDTH and y >= BUTTON_Y and y <= BUTTON_Y + BUTTON_HEIGHT then
-            self.stateMachine:change(
-                'loading',
-                {
-                    songs = {
-                        {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.json'},
-                        {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.json'},
-                        {path = 'assets/game3.mp3', fftDataPath = 'assets/fft_data_game3.json'}
-                    },
-                    selectedFighters = self.selectedFighters
-                }
-            )
+        if x >= BUTTON_X and x <= BUTTON_X + BUTTON_WIDTH and y >= PLAY_BUTTON_Y and y <= PLAY_BUTTON_Y + BUTTON_HEIGHT then
+            self:MoveToGame()
         elseif
             x >= BUTTON_X and x <= BUTTON_X + BUTTON_WIDTH and y >= CHARACTER_BUTTON_Y and
                 y <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT
          then
             self.stateMachine:change('characterselect')
+        elseif
+            x >= BUTTON_X and x <= BUTTON_X + BUTTON_WIDTH and y >= SETTINGS_BUTTON_Y and
+                y <= SETTINGS_BUTTON_Y + BUTTON_HEIGHT
+         then
+            self.stateMachine:change('settings', self.settings)
         end
     end
 end
 
 function Menu:keypressed(key)
     if key == 'space' then
-        self.stateMachine:change(
-            'loading',
-            {
-                songs = {
-                    {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.json'},
-                    {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.json'},
-                    {path = 'assets/game3.mp3', fftDataPath = 'assets/fft_data_game3.json'}
-                },
-                selectedFighters = self.selectedFighters
-            }
-        )
+        self:MoveToGame()
     end
+end
+
+function Menu:MoveToGame() -- Move to the game state
+    self.stateMachine:change(
+        'loading',
+        {
+            useAI = self.settings.useAI,
+            songs = {
+                {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.json'},
+                {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.json'},
+                {path = 'assets/game3.mp3', fftDataPath = 'assets/fft_data_game3.json'}
+            },
+            selectedFighters = self.selectedFighters
+        }
+    )
 end
 
 function Menu:buildBackground()

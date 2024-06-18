@@ -1,4 +1,4 @@
-local love = _G.love
+local love, AIController = _G.love, _G.AIController
 local Game = {}
 
 local SPRITE_WIDTH = 800
@@ -19,6 +19,14 @@ function Game:enter(params)
     self.fighter1 = params.fighter1
     self.fighter2 = params.fighter2
 
+    assert(self.fighter1, 'Fighter 1 must be provided to the game state')
+    assert(self.fighter2, 'Fighter 2 must be provided to the game state')
+
+    -- AI setup (assuming fighter2 is controlled by AI)
+    if params.useAi then
+        self.aiController = AIController:new(self.fighter2, self.fighter1)
+    end
+
     -- FFT visualizer setup
     self.fftBufferSize = 64
     self.fftData = {}
@@ -27,24 +35,17 @@ function Game:enter(params)
     self.fftMaxHeight = 18
 
     -- Songs
-    self.songs = params and params.songs
+    self.songs = params.songs
     self.currentSongIndex = 1
+    assert(self.songs, 'Songs must be provided to the game state')
     self:playCurrentSong()
+
+    -- Load font for FPS counter
+    self.fpsFont = love.graphics.newFont(12)
 end
 
 function Game:exit()
     self.music:stop()
-end
-
-function Game:playCurrentSong()
-    local song = self.songs[self.currentSongIndex]
-    self.music = love.audio.newSource(song.path, 'stream')
-    self.music:setLooping(false)
-    self.music:play()
-
-    -- Use preloaded FFT data
-    self.fftData = song.fftData
-    self.fftDataIndex = 1
 end
 
 function Game:update(dt)
@@ -53,6 +54,11 @@ function Game:update(dt)
     end
 
     self.timer = self.timer + dt * SPEED
+
+    -- Update AI controller
+    if self.aiController then
+        self.aiController:update(dt)
+    end
 
     -- Update fighters with the other fighter's state
     self.fighter1:update(dt, self.fighter2)
@@ -88,8 +94,9 @@ function Game:update(dt)
 end
 
 function Game:render()
+    -- Clear screen with black color
     love.graphics.clear(0, 0, 0, 1)
-    love.graphics.print('Game State', 10, 10)
+
     -- Draw the background image
     local currentFrame = (math.floor(self.timer) % FRAMES) + 1
     love.graphics.draw(self.background, self.background_quads[currentFrame], 0, 0)
@@ -108,6 +115,14 @@ function Game:render()
     if self.gameOver then
         love.graphics.printf(self.winner, 0, SPRITE_HEIGHT / 2 - 20, SPRITE_WIDTH, 'center')
         love.graphics.printf("Press 'ESC' to return to Main Menu", 0, SPRITE_HEIGHT / 2 + 20, SPRITE_WIDTH, 'center')
+    end
+
+    -- Render FPS counter in the top right corner
+    if _G.isDebug then
+        love.graphics.setFont(self.fpsFont)
+        love.graphics.setColor(1, 1, 1, 1)
+        local fps = love.timer.getFPS()
+        love.graphics.print("FPS: " .. fps, SPRITE_WIDTH - 60, 10)
     end
 end
 
@@ -157,13 +172,7 @@ function Game:renderHealthBars()
 
     -- Fighter 2 health bar
     love.graphics.setColor(1, 0, 0, 1)
-    love.graphics.rectangle(
-        'fill',
-        love.graphics.getWidth() - barWidth - padding,
-        padding,
-        barWidth,
-        barHeight
-    )
+    love.graphics.rectangle('fill', love.graphics.getWidth() - barWidth - padding, padding, barWidth, barHeight)
     love.graphics.setColor(0, 1, 0, 1)
     love.graphics.rectangle(
         'fill',
@@ -199,7 +208,7 @@ function Game:renderFFT()
                 local y1 = centerY + self.fftRadius * math.sin(angle)
                 local x2 = centerX + (self.fftRadius + barHeight) * math.cos(angle)
                 local y2 = centerY + (self.fftRadius + barHeight) * math.sin(angle)
-                love.graphics.setColor(1, 1, 1)
+                love.graphics.setColor(1, 1, 1, 1)
                 love.graphics.line(x1, y1, x2, y2)
             end
         end
@@ -207,9 +216,20 @@ function Game:renderFFT()
 end
 
 function Game:keypressed(key)
-    if self.gameOver and key == 'return' then
+    if key == 'escape' then
         self.stateMachine:change('menu')
     end
+end
+
+function Game:playCurrentSong()
+    local song = self.songs[self.currentSongIndex]
+    self.music = love.audio.newSource(song.path, 'stream')
+    self.music:setLooping(false)
+    self.music:play()
+
+    -- Use preloaded FFT data
+    self.fftData = song.fftData
+    self.fftDataIndex = 1
 end
 
 return Game

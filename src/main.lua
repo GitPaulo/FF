@@ -1,14 +1,14 @@
 require 'dependencies'
 
-local Menu, Game, CharacterSelect, Loading, StateMachine, love, SoundManager, isDebug =
+local Menu, Game, CharacterSelect, Loading, Settings, StateMachine, love, SoundManager =
     _G.Menu,
     _G.Game,
     _G.CharacterSelect,
     _G.Loading,
+    _G.Settings,
     _G.StateMachine,
     _G.love,
-    _G.SoundManager,
-    _G.isDebug
+    _G.SoundManager -- Do not add _G.isDebug as it is changes by Settings
 local gStateMachine
 
 function love.load()
@@ -23,7 +23,8 @@ function love.load()
             ['menu'] = Menu,
             ['game'] = Game,
             ['loading'] = Loading,
-            ['characterselect'] = CharacterSelect
+            ['characterselect'] = CharacterSelect,
+            ['settings'] = Settings
         }
     )
     gStateMachine:change('menu')
@@ -49,14 +50,10 @@ end
 
 function love.keypressed(key, scancode, isrepeat)
     love.keyboard.keysPressed[key] = true
-    if isDebug then
+    if _G.isDebug then
         print('Key Pressed: ', key) -- Debugging statement to check keypresses
     end
-    if key == 'escape' then
-        if gStateMachine.currentStateName == 'game' then
-            gStateMachine:change('menu')
-        end
-    end
+    gStateMachine:keypressed(key)
 end
 
 function love.keyboard.wasPressed(key)

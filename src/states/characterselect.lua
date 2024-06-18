@@ -51,7 +51,15 @@ function CharacterSelect:enter(params)
             local grid = Anim8.newGrid(frameWidth, frameHeight, spriteSheet:getWidth(), spriteSheet:getHeight())
             local success, animation = pcall(Anim8.newAnimation, grid('1-' .. numFrames, 1), 0.1)
             if success then
-                table.insert(self.animations, {spriteSheet = spriteSheet, animation = animation, frameWidth = frameWidth, frameHeight = frameHeight})
+                table.insert(
+                    self.animations,
+                    {
+                        spriteSheet = spriteSheet,
+                        animation = animation,
+                        frameWidth = frameWidth,
+                        frameHeight = frameHeight
+                    }
+                )
             else
                 if _G.isDebug then
                     print('Error creating animation:', animation)
@@ -117,8 +125,6 @@ function CharacterSelect:update(dt)
             end
             self.stateMachine:change('menu', {selectedFighters = selectedFighterNames})
         end
-    elseif love.keyboard.wasPressed('escape') then
-        self.stateMachine:change('menu')
     end
 end
 
@@ -132,7 +138,13 @@ function CharacterSelect:render()
     -- Draw player number and character name
     love.graphics.setFont(self.instructionFont)
     local currentCharacter = self.characters[self.selectedFighters[self.currentPlayer]].name
-    love.graphics.printf('Player ' .. self.currentPlayer .. ' as "' .. currentCharacter .. '"', 0, 60, love.graphics.getWidth(), 'center')
+    love.graphics.printf(
+        'Player ' .. self.currentPlayer .. ' as "' .. currentCharacter .. '"',
+        0,
+        60,
+        love.graphics.getWidth(),
+        'center'
+    )
 
     -- Draw the selected character sprite
     local animationData = self.animations[self.selectedFighters[self.currentPlayer]]
@@ -166,6 +178,12 @@ function CharacterSelect:render()
 
     -- Draw custom cursor
     love.graphics.draw(self.cursor, love.mouse.getX(), love.mouse.getY())
+end
+
+function CharacterSelect:keypressed(key)
+    if key == 'escape' then
+        self.stateMachine:change('menu')
+    end
 end
 
 return CharacterSelect

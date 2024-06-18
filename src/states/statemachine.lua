@@ -55,4 +55,10 @@ function StateMachine:mousepressed(x, y, button)
     end
 end
 
+function StateMachine:keypressed(key)
+    if self.current.keypressed then
+        self.current:keypressed(key)
+    end
+end
+
 return StateMachine

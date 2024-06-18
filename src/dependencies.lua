@@ -1,6 +1,7 @@
 -- Core
 _G.Class        = require 'lib.class'
 _G.SoundManager = require 'sound.soundmanager'
+_G.AIController = require 'ai.aicontroller'
 -- Entities
 _G.Fighter = require 'entities.fighter'
 -- States
@@ -9,3 +10,4 @@ _G.Menu            = require 'states.menu'
 _G.Loading         = require 'states.loading'
 _G.Game            = require 'states.game'
 _G.CharacterSelect = require 'states.characterselect'
+_G.Settings        = require 'states.settings'

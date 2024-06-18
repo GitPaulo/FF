@@ -1,6 +1,6 @@
 local Anim8 = require 'lib.anim8'
 
-local Class, love, SoundManager, isDebug = _G.Class, _G.love, _G.SoundManager, _G.isDebug
+local Class, love, SoundManager = _G.Class, _G.love, _G.SoundManager
 local Fighter = Class:extend()
 
 function Fighter:init(id, name, startingX, startingY, scale, controls, traits, hitboxes, spriteConfig, soundFXConfig)
@@ -183,17 +183,17 @@ function Fighter:handleMovement(dt, other)
     end
 
     -- Detect double-tap for dashing
-    if love.keyboard.wasPressed(self.controls.left) then
-        if currentTime - (self.lastTapTime.left or 0) < 0.3 then
-            self:startDash(-1)
+        if love.keyboard.wasPressed(self.controls.left) then
+            if currentTime - (self.lastTapTime.left or 0) < 0.3 then
+                self:startDash(-1)
+            end
+            self.lastTapTime.left = currentTime
+        elseif love.keyboard.wasPressed(self.controls.right) then
+            if currentTime - (self.lastTapTime.right or 0) < 0.3 then
+                self:startDash(1)
+            end
+            self.lastTapTime.right = currentTime
         end
-        self.lastTapTime.left = currentTime
-    elseif love.keyboard.wasPressed(self.controls.right) then
-        if currentTime - (self.lastTapTime.right or 0) < 0.3 then
-            self:startDash(1)
-        end
-        self.lastTapTime.right = currentTime
-    end
 
     -- Handle normal movement
     if love.keyboard.isDown(self.controls.left) then
@@ -228,6 +228,9 @@ function Fighter:handleMovement(dt, other)
 end
 
 function Fighter:startDash(direction)
+    if self.id > 2 then
+        return -- ai doesn't dash
+    end
     if self.stamina >= self.dashStaminaCost then
         self.isDashing = true
         self.direction = direction
@@ -385,7 +388,7 @@ function Fighter:render()
     local spriteName = self.state == 'attacking' and self.attackType or self.state
     local sprite = self.spritesheets[spriteName] or self.spritesheets.idle
 
-    if isDebug and self.id == 1 then
+    if _G.isDebug and self.id == 1 then
         print(
             '[Fighter ' .. self.id .. ']:',
             spriteName,
@@ -419,7 +422,7 @@ function Fighter:render()
         local posY = self.y + offsetY + self.scale.oy
         self.currentAnimation:draw(sprite, posX, posY, angle, scaleX, scaleY)
 
-        if isDebug and self.id == 1 then
+        if _G.isDebug and self.id == 1 then
             print(self.scale.ox, self.scale.oy, posX, posY)
             print('[Sprite]:', posX, posY, '<- pos, scale ->', scaleX, scaleY)
         end
@@ -429,7 +432,7 @@ function Fighter:render()
 
     -- Draw debug rectangle with dot
     -- Characters are really just a rectangle and the sprite gets centered inside it
-    if isDebug then
+    if _G.isDebug then
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle('line', self.x, self.y, self.width, self.height)
         love.graphics.setColor(1, 0, 0, 1) -- Red color for the debug dot
@@ -437,7 +440,7 @@ function Fighter:render()
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 
-    if self.state == 'attacking' and self.attackType and isDebug then
+    if self.state == 'attacking' and self.attackType and _G.isDebug then
         self:renderHitbox()
     end
 
