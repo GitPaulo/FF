@@ -3,31 +3,36 @@ local Anim8 = require 'lib.anim8'
 local Class, love, SoundManager, isDebug = _G.Class, _G.love, _G.SoundManager, _G.isDebug
 local Fighter = Class:extend()
 
-function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfig, soundFXConfig)
+function Fighter:init(id, name, startingX, startingY, scale, controls, traits, hitboxes, spriteConfig, soundFXConfig)
     -- Character Properties
     self.id = id
-    self.x = x
-    self.y = y
+    self.name = name
+    self.x = startingX
+    self.y = startingY
+    self.scale = scale
+    self.width = scale.width
+    self.height = scale.height
     self.controls = controls
-    self.width = traits.width or 50
-    self.height = traits.height or 100
     self.speed = traits.speed or 200
     self.health = traits.health or 100
     self.stamina = traits.stamina or 100
     self.maxStamina = traits.stamina or 100
+    self.jumpStrength = -(traits.jumpStrength or 600)
+    self.dashSpeed = traits.dashSpeed or 500
     self.hitboxes = hitboxes or {
         light = {width = 100, height = 20, recovery = 0.5, damage = 5},
         medium = {width = 150, height = 30, recovery = 0.7, damage = 10},
         heavy = {width = 200, height = 40, recovery = 1.0, damage = 20}
     }
-    self:validateHitboxes()
+
+    -- Helps a lot
+    self:validateFighterParameters()
 
     -- Character State
     self.dy = 0
     self.direction = (id == 2) and -1 or 1 -- Set direction to right for player 1 and left for player 2
     self.state = 'idle'
     self.gravity = 1000
-    self.jumpStrength = -525
     self.attackType = nil
     self.lastAttackType = nil
     self.attackEndTime = 0
@@ -40,7 +45,6 @@ function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfig, soundF
     self.isDashing = false
     self.lastTapTime = {left = 0, right = 0}
     self.dashDuration = 0.25
-    self.dashSpeed = 500
     self.dashEndTime = 0
     self.dashStaminaCost = 25
 
@@ -52,7 +56,16 @@ function Fighter:init(id, x, y, controls, traits, hitboxes, spriteConfig, soundF
     self.currentAnimation = self.animations.idle
 end
 
-function Fighter:validateHitboxes()
+function Fighter:validateFighterParameters()
+    assert(self.id, "ID must be defined for fighter")
+    assert(self.name, "Name must be defined for fighter")
+    assert(self.x, "Starting X position must be defined for fighter")
+    assert(self.y, "Starting Y position must be defined for fighter")
+    assert(self.scale, "Scale must be defined for fighter")
+    assert(self.width, "Width must be defined for fighter")
+    assert(self.height, "Height must be defined for fighter")
+    assert(self.controls, "Controls must be defined for fighter")
+
     for attackType, hitbox in pairs(self.hitboxes) do
         assert(hitbox.width, "Width must be defined for hitbox: " .. attackType)
         assert(hitbox.height, "Height must be defined for hitbox: " .. attackType)
@@ -78,10 +91,14 @@ function Fighter:loadAnimations(configs)
     for key, config in pairs(configs) do
         local path = config[1]
         local frameCount = config[2]
+        local spritesheet = self.spritesheets[key]
+        local frameWidth = math.floor(spritesheet:getWidth() / frameCount)
+        local frameHeight = spritesheet:getHeight()
+
         animations[key] = self:createAnimation(
-            self.spritesheets[key],
-            200,
-            200,
+            spritesheet,
+            frameWidth,
+            frameHeight,
             frameCount,
             0.1
         )
@@ -203,6 +220,8 @@ function Fighter:startDash(direction)
         self.direction = direction
         self.dashEndTime = love.timer.getTime() + self.dashDuration
         self.stamina = self.stamina - self.dashStaminaCost -- Consume stamina
+        -- play sound
+        SoundManager:playSound(self.sounds.dash)
     end
 end
 
@@ -224,13 +243,14 @@ end
 
 function Fighter:handleJumping(dt, other)
     local windowHeight = love.graphics.getHeight()
+    local groundLevel = windowHeight - 6 -- from the bottom
 
     -- Update vertical position due to gravity
     self.dy = self.dy + self.gravity * dt
     local newY = self.y + self.dy * dt
 
-    if newY >= windowHeight - self.height then
-        self.y = windowHeight - self.height
+    if newY >= groundLevel - self.height then
+        self.y = groundLevel - self.height
         self.isJumping = false
         self.dy = 0
         if not love.keyboard.isDown(self.controls.left)
@@ -261,7 +281,7 @@ function Fighter:handleJumping(dt, other)
         and self.state ~= 'hit'
         and not self.isRecovering
         and love.keyboard.wasPressed(self.controls.jump)
-        and self.y >= windowHeight - self.height then
+        and self.y >= groundLevel - self.height then
         self.dy = self.jumpStrength
         self.isJumping = true
         self:setState('jump')
@@ -314,6 +334,7 @@ function Fighter:startRecovery()
     self.lastAttackType = self.attackType
     self.attackType = nil
     self.currentAnimation = self.animations.idle
+    self.currentAnimation:gotoFrame(1)
     self.isRecovering = true
 end
 
@@ -323,6 +344,7 @@ function Fighter:endRecovery()
     end
     self.isRecovering = false -- garbage code because i don't want to separate state management
     self.currentAnimation = self.animations.idle
+    self.currentAnimation:gotoFrame(1)
 end
 
 function Fighter:updateState()
@@ -346,33 +368,54 @@ function Fighter:setState(state)
         else
             self.currentAnimation = self.animations.idle
         end
+        self.currentAnimation:gotoFrame(1)
     end
 end
 
 function Fighter:render()
-    print("Rendering fighter", self.id, "with state:", self.state)
     -- Ensure the correct spritesheet is used for the current state
     local spriteName = self.state == 'attacking' and self.attackType or self.state
     local sprite = self.spritesheets[spriteName] or self.spritesheets.idle
+
+    if isDebug and self.id == 1 then
+        print("[Fighter " .. self.id .. "]:", spriteName, "x", self.x, "y", self.y, "state:", self.state, "attackType:", self.attackType)
+    end
+
     if self.currentAnimation then
+        -- Frame dimensions
+        local frameWidth = self.currentAnimation:getDimensions()
+        local frameHeight = self.currentAnimation:getDimensions()
+
         -- Adjust these values to change the size of the sprite
-        local scaleX = self.width / 35 * self.direction
-        local scaleY = self.height / 80
+        local scaleX = self.scale.x * self.direction
+        local scaleY = self.scale.y
 
         -- Ensure the sprite is centered within the rectangle
-        local offsetX = (self.width - (200 * scaleX)) / 2
-        local offsetY = (self.height - (200 * scaleY)) / 2
+        local offsetX = (self.width - (frameWidth * scaleX)) / 2
+        local offsetY = (self.height - (frameHeight * scaleY)) / 2
 
         -- Draw the animation with scaling and positioning adjustments
-        self.currentAnimation:draw(sprite, self.x + offsetX, self.y + offsetY, 0, scaleX, scaleY)
+        local angle = 0;
+        local posX = self.x + offsetX + (self.scale.ox * self.direction)
+        local posY = self.y + offsetY + self.scale.oy
+        self.currentAnimation:draw(sprite, posX, posY, angle, scaleX, scaleY)
+
+        if isDebug and self.id == 1 then
+            print(self.scale.ox, self.scale.oy, posX, posY)
+            print("[Sprite]:", posX, posY, "<- pos, scale ->", scaleX, scaleY)
+        end
     else
         print("Error: No current animation to draw for state:", self.state)
     end
 
-    -- Draw debug rectangle
+    -- Draw debug rectangle with dot
+    -- Characters are really just a rectangle and the sprite gets centered inside it
     if isDebug then
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle('line', self.x, self.y, self.width, self.height)
+        love.graphics.setColor(1, 0, 0, 1) -- Red color for the debug dot
+        love.graphics.circle('fill', self.x, self.y, 5) -- Draw a small circle (dot) at (self.x, self.y)
+        love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 
     if self.state == 'attacking' and self.attackType and isDebug then
@@ -386,6 +429,7 @@ function Fighter:render()
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 end
+
 
 function Fighter:getHitbox()
     local hitbox = self.hitboxes[self.attackType]

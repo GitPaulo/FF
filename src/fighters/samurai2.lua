@@ -1,10 +1,11 @@
 return {
     name = 'Samurai2',
-    traits = {health = 100, speed = 180, stamina = 100},
+    scale = {x = 1.35, y = 1.3, ox = 0, oy = -2, width = 50 , height = 80},
+    traits = {health = 120, speed = 185, stamina = 100, dashSpeed = 515, jumpStrength = 600},
     hitboxes = {
-        light = {width = 90, height = 20, recovery = 0.1, damage = 7, duration = 0.5},
-        medium = {width = 90, height = 90, recovery = 0.4, damage = 12, duration = 0.7},
-        heavy = {width = 90, height = 90, recovery = 0.8, damage = 25, duration = 1.2}
+        light = {width = 90, height = 100, recovery = 0.25, damage = 8, duration = 0.45},
+        medium = {width = 90, height = 130, recovery = 0.4, damage = 12, duration = 0.4},
+        heavy = {width = 90, height = 130, recovery = 0.8, damage = 24, duration = 0.8}
     },
     spriteConfig = {
         idle = {'assets/fighters/Samurai2/Idle.png', 4},
@@ -22,6 +23,7 @@ return {
         heavy = 'assets/fighters/Samurai2/Attack1.wav',
         hit = 'assets/fighters/Samurai2/Hit.mp3',
         block = 'assets/fighters/Samurai2/Block.wav',
-        jump = 'assets/fighters/Samurai2/Jump.mp3'
+        jump = 'assets/fighters/Samurai2/Jump.mp3',
+        dash = 'assets/fighters/Samurai2/Dash.mp3'
     }
 }

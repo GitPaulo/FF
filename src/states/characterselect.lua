@@ -13,20 +13,56 @@ function CharacterSelect:enter(params)
     self.animations = {}
 
     -- Load character data from files
-    local files = love.filesystem.getDirectoryItems('fighters')
-    for _, file in ipairs(files) do
+    for _, file in ipairs(love.filesystem.getDirectoryItems('fighters')) do
+        if _G.isDebug then
+            print('Loading fighter: ' .. file)
+        end
         if file:match('%.lua$') then
             local character = table.shallowcopy(require('fighters.' .. file:gsub('%.lua$', '')))
             table.insert(self.characters, character)
-            local spriteSheet = love.graphics.newImage('assets/fighters/' .. character.name .. '/Idle.png')
+            local spriteSheetPath = 'assets/fighters/' .. character.name .. '/Idle.png'
+            local spriteSheet = love.graphics.newImage(spriteSheetPath)
 
-            -- Use the number of frames from spriteConfig
-            local frameWidth, frameHeight = 200, 200 -- Assuming fixed frame size
+            if _G.isDebug then
+                print('Sprite sheet path:', spriteSheetPath)
+                print('Sprite sheet dimensions:', spriteSheet:getWidth(), 'x', spriteSheet:getHeight())
+            end
+
+            -- Get number of frames
             local numFrames = character.spriteConfig.idle[2]
+            if _G.isDebug then
+                print('Number of frames:', numFrames)
+            end
+
+            -- Dynamically calculate frame dimensions
+            local frameWidth = spriteSheet:getWidth() / numFrames
+            local frameHeight = spriteSheet:getHeight()
+
+            -- Check if the calculated frame dimensions fit within the sprite sheet dimensions
+            if spriteSheet:getWidth() < frameWidth * numFrames or spriteSheet:getHeight() < frameHeight then
+                error('Frame dimensions exceed sprite sheet dimensions for ' .. character.name)
+            end
+
+            if _G.isDebug then
+                print('Calculated Frame dimensions:', frameWidth, 'x', frameHeight)
+            end
+
+            -- Create animation
             local grid = Anim8.newGrid(frameWidth, frameHeight, spriteSheet:getWidth(), spriteSheet:getHeight())
-            local animation = Anim8.newAnimation(grid('1-' .. numFrames, 1), 0.1)
-            table.insert(self.animations, {spriteSheet = spriteSheet, animation = animation})
+            local success, animation = pcall(Anim8.newAnimation, grid('1-' .. numFrames, 1), 0.1)
+            if success then
+                table.insert(self.animations, {spriteSheet = spriteSheet, animation = animation, frameWidth = frameWidth, frameHeight = frameHeight})
+            else
+                if _G.isDebug then
+                    print('Error creating animation:', animation)
+                end
+            end
         end
+    end
+
+    -- Ensure selected fighters are within bounds
+    for i = 1, PLAYER_COUNT do
+        self.selectedFighters[i] = self.selectedFighters[i] % #self.characters + 1
     end
 
     -- Load fonts
@@ -37,7 +73,6 @@ function CharacterSelect:enter(params)
     -- Set custom cursor
     self.cursor = love.graphics.newImage('assets/cursor.png')
     love.mouse.setVisible(false)
-
 
     -- Load background music
     self.backgroundMusic = love.audio.newSource('assets/characterselect.mp3', 'stream')
@@ -50,18 +85,28 @@ function CharacterSelect:exit()
 end
 
 function CharacterSelect:update(dt)
-    self.animations[self.selectedFighters[self.currentPlayer]].animation:update(dt)
+    local currentPlayerIndex = self.selectedFighters[self.currentPlayer]
+    if _G.isDebug then
+        print('Current player index: ', self.currentPlayer, 'Selected Fighter Index: ', currentPlayerIndex)
+    end
+
+    self.animations[currentPlayerIndex].animation:update(dt)
+
+    local function wrapSelection(index, step)
+        index = index + step
+        if index < 1 then
+            return #self.characters
+        elseif index > #self.characters then
+            return 1
+        else
+            return index
+        end
+    end
 
     if love.keyboard.wasPressed('left') then
-        self.selectedFighters[self.currentPlayer] = self.selectedFighters[self.currentPlayer] - 1
-        if self.selectedFighters[self.currentPlayer] < 1 then
-            self.selectedFighters[self.currentPlayer] = #self.characters
-        end
+        self.selectedFighters[self.currentPlayer] = wrapSelection(self.selectedFighters[self.currentPlayer], -1)
     elseif love.keyboard.wasPressed('right') then
-        self.selectedFighters[self.currentPlayer] = self.selectedFighters[self.currentPlayer] + 1
-        if self.selectedFighters[self.currentPlayer] > #self.characters then
-            self.selectedFighters[self.currentPlayer] = 1
-        end
+        self.selectedFighters[self.currentPlayer] = wrapSelection(self.selectedFighters[self.currentPlayer], 1)
     elseif love.keyboard.wasPressed('return') then
         if self.currentPlayer < PLAYER_COUNT then
             self.currentPlayer = self.currentPlayer + 1
@@ -70,12 +115,7 @@ function CharacterSelect:update(dt)
             for i, index in ipairs(self.selectedFighters) do
                 selectedFighterNames[i] = self.characters[index].name
             end
-            self.stateMachine:change(
-                'menu',
-                {
-                    selectedFighters = selectedFighterNames
-                }
-            )
+            self.stateMachine:change('menu', {selectedFighters = selectedFighterNames})
         end
     elseif love.keyboard.wasPressed('escape') then
         self.stateMachine:change('menu')
@@ -83,56 +123,46 @@ function CharacterSelect:update(dt)
 end
 
 function CharacterSelect:render()
-    love.graphics.clear(0.1, 0.1, 0.1) -- Clear the screen with a dark background
+    love.graphics.clear(0.1, 0.1, 0.1)
 
     -- Draw title
     love.graphics.setFont(self.titleFont)
     love.graphics.printf('Select Your Fighter', 0, 10, love.graphics.getWidth(), 'center')
-    love.graphics.printf('Player ' .. self.currentPlayer, 0, 60, love.graphics.getWidth(), 'center')
+
+    -- Draw player number and character name
+    love.graphics.setFont(self.instructionFont)
+    local currentCharacter = self.characters[self.selectedFighters[self.currentPlayer]].name
+    love.graphics.printf('Player ' .. self.currentPlayer .. ' as "' .. currentCharacter .. '"', 0, 60, love.graphics.getWidth(), 'center')
 
     -- Draw the selected character sprite
     local animationData = self.animations[self.selectedFighters[self.currentPlayer]]
     local windowWidth, windowHeight = love.graphics.getWidth(), love.graphics.getHeight()
-    local spriteX = (windowWidth - (200 * SPRITE_SCALE)) / 2 -- Center based on frame size
-    local spriteY = (windowHeight - (200 * SPRITE_SCALE)) / 2 + 20
+    local spriteX = (windowWidth - (animationData.frameWidth * SPRITE_SCALE)) / 2
+    local spriteY = (windowHeight - (animationData.frameHeight * SPRITE_SCALE)) / 2 + 20
     animationData.animation:draw(animationData.spriteSheet, spriteX, spriteY, 0, SPRITE_SCALE, SPRITE_SCALE)
 
     -- Draw stats next to the character sprite
     local character = self.characters[self.selectedFighters[self.currentPlayer]]
-    local statsX = 280
-    local statsY = 100
-    local statsYGap = 14
+    local stats = {
+        'Speed: ' .. character.traits.speed,
+        'Health: ' .. character.traits.health,
+        'Stamina: ' .. character.traits.stamina,
+        'Light Damage: ' .. character.hitboxes.light.damage,
+        'Medium Damage: ' .. character.hitboxes.medium.damage,
+        'Heavy Damage: ' .. character.hitboxes.heavy.damage
+    }
+    local statsX, statsY, statsYGap = 280, 100, 14
     love.graphics.setFont(self.statsFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf('Speed: ' .. character.traits.speed, statsX, statsY + statsYGap, 200, 'left')
-    love.graphics.printf('Health: ' .. character.traits.health, statsX, statsY + statsYGap * 2, 200, 'left')
-    love.graphics.printf('Stamina: ' .. character.traits.stamina, statsX, statsY + statsYGap * 3, 200, 'left')
-    love.graphics.printf(
-        'Light Damage: ' .. character.hitboxes.light.damage,
-        statsX,
-        statsY + statsYGap * 4,
-        200,
-        'left'
-    )
-    love.graphics.printf(
-        'Medium Damage: ' .. character.hitboxes.medium.damage,
-        statsX,
-        statsY + statsYGap * 5,
-        200,
-        'left'
-    )
-    love.graphics.printf(
-        'Heavy Damage: ' .. character.hitboxes.heavy.damage,
-        statsX,
-        statsY + statsYGap * 6,
-        200,
-        'left'
-    )
+    for i, stat in ipairs(stats) do
+        love.graphics.printf(stat, statsX, statsY + statsYGap * i, 200, 'left')
+    end
 
     -- Draw instructions
     love.graphics.setFont(self.instructionFont)
-    love.graphics.printf("Use 'Arrow' keys to swap and 'Enter' to confirm", 0, windowHeight - 60, windowWidth, 'center')
-    love.graphics.printf("Press 'Esc' to go back", 0, windowHeight - 30, windowWidth, 'center')
+    local instructionY = windowHeight - 60
+    love.graphics.printf("Use 'Arrow' keys to swap and 'Enter' to confirm", 0, instructionY, windowWidth, 'center')
+    love.graphics.printf("Press 'Esc' to go back", 0, instructionY + 30, windowWidth, 'center')
 
     -- Draw custom cursor
     love.graphics.draw(self.cursor, love.mouse.getX(), love.mouse.getY())

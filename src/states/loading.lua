@@ -23,19 +23,34 @@ function Loading:loadFighters()
     local fighter1Data = table.deepcopy(require('fighters.' .. self.selectedFighters[1]))
     local fighter2Data = table.deepcopy(require('fighters.' .. self.selectedFighters[2]))
 
+    -- TODO: Move to config
+    local startPos1 = {100, 200}
+    local startPos2 = {600, 200}
+    local fighter1Controls = {
+        left = 'a',
+        right = 'd',
+        jump = 'w',
+        lightAttack = 'e',
+        mediumAttack = 'r',
+        heavyAttack = 't'
+    }
+    local fighter2Controls = {
+        left = 'h',
+        right = 'k',
+        jump = 'u',
+        lightAttack = 'i',
+        mediumAttack = 'o',
+        heavyAttack = 'p'
+    }
+
     self.fighter1 =
         Fighter:new(
         1,
-        100,
-        200,
-        {
-            left = 'a',
-            right = 'd',
-            jump = 'w',
-            lightAttack = 'e',
-            mediumAttack = 'r',
-            heavyAttack = 't'
-        },
+        fighter1Data.name,
+        startPos1[1],
+        startPos1[2],
+        fighter1Data.scale,
+        fighter1Controls,
         fighter1Data.traits,
         fighter1Data.hitboxes,
         fighter1Data.spriteConfig,
@@ -45,16 +60,11 @@ function Loading:loadFighters()
     self.fighter2 =
         Fighter:new(
         2,
-        600,
-        200,
-        {
-            left = 'h',
-            right = 'k',
-            jump = 'u',
-            lightAttack = 'i',
-            mediumAttack = 'o',
-            heavyAttack = 'p'
-        },
+        fighter2Data.name,
+        startPos2[1],
+        startPos2[2],
+        fighter2Data.scale,
+        fighter2Controls,
         fighter2Data.traits,
         fighter2Data.hitboxes,
         fighter2Data.spriteConfig,
