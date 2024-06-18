@@ -1,8 +1,10 @@
-local json = require 'lib/json'
+local json = require 'lib.json'
+local table = require 'lib.table'
 local Fighter, love = _G.Fighter, _G.love
 local Loading = {}
 
 function Loading:enter(params)
+    self.selectedFighters = params.selectedFighters
     self.songs = params.songs
     self.currentSongIndex = 1
     self.loadingStarted = false
@@ -18,6 +20,9 @@ function Loading:enter(params)
 end
 
 function Loading:loadFighters()
+    local fighter1Data = table.deepcopy(require('fighters.' .. self.selectedFighters[1]))
+    local fighter2Data = table.deepcopy(require('fighters.' .. self.selectedFighters[2]))
+
     self.fighter1 =
         Fighter:new(
         1,
@@ -31,30 +36,10 @@ function Loading:loadFighters()
             mediumAttack = 'r',
             heavyAttack = 't'
         },
-        {speed = 200},
-        {
-            light = {width = 95, height = 70, recovery = 0.2, damage = 7, duration = 0.5},
-            medium = {width = 125, height = 25, recovery = 0.5, damage = 15, duration = 0.8},
-            heavy = {width = 125, height = 25, recovery = 1, damage = 20, duration = 1.4}
-        },
-        {
-            idle = {'assets/Fighter1/Idle.png', 8},
-            run = {'assets/Fighter1/Run.png', 8},
-            jump = {'assets/Fighter1/Jump.png', 2},
-            light = {'assets/Fighter1/Attack1.png', 6},
-            medium = {'assets/Fighter1/Attack2.png', 6},
-            heavy = {'assets/Fighter1/Attack2.png', 6},
-            hit = {'assets/Fighter1/TakeHit.png', 4},
-            death = {'assets/Fighter1/Death.png', 6}
-        },
-        {
-            light = 'assets/Fighter1/Attack1.wav',
-            medium = 'assets/Fighter1/Attack1.wav',
-            heavy = 'assets/Fighter1/Attack1.wav',
-            hit = 'assets/Fighter1/Hit.mp3',
-            block = 'assets/Fighter1/Block.wav',
-            jump = 'assets/Fighter1/Jump.mp3'
-        }
+        fighter1Data.traits,
+        fighter1Data.hitboxes,
+        fighter1Data.spriteConfig,
+        fighter1Data.soundFXConfig
     )
 
     self.fighter2 =
@@ -70,30 +55,10 @@ function Loading:loadFighters()
             mediumAttack = 'o',
             heavyAttack = 'p'
         },
-        {speed = 160},
-        {
-            light = {width = 90, height = 20, recovery = 0.1, damage = 7, duration = 0.5},
-            medium = {width = 90, height = 90, recovery = 0.4, damage = 12, duration = 0.7},
-            heavy = {width = 90, height = 90, recovery = 0.8, damage = 25, duration = 1.2}
-        },
-        {
-            idle = {'assets/Fighter2/Idle.png', 4},
-            run = {'assets/Fighter2/Run.png', 8},
-            jump = {'assets/Fighter2/Jump.png', 2},
-            light = {'assets/Fighter2/Attack1.png', 4},
-            medium = {'assets/Fighter2/Attack2.png', 4},
-            heavy = {'assets/Fighter2/Attack2.png', 4},
-            hit = {'assets/Fighter2/TakeHit.png', 3},
-            death = {'assets/Fighter2/Death.png', 7}
-        },
-        {
-            light = 'assets/Fighter2/Attack1.wav',
-            medium = 'assets/Fighter2/Attack1.wav',
-            heavy = 'assets/Fighter2/Attack1.wav',
-            hit = 'assets/Fighter1/Hit.mp3',
-            block = 'assets/Fighter2/Block.wav',
-            jump = 'assets/Fighter1/Jump.mp3'
-        }
+        fighter2Data.traits,
+        fighter2Data.hitboxes,
+        fighter2Data.spriteConfig,
+        fighter2Data.soundFXConfig
     )
 end
 

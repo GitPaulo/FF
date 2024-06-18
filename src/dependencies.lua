@@ -1,10 +1,11 @@
 -- Core
-Class        = require 'lib.class'
-SoundManager = require 'sound.soundmanager'
+_G.Class        = require 'lib.class'
+_G.SoundManager = require 'sound.soundmanager'
 -- Entities
-Fighter = require 'character.figher'
+_G.Fighter = require 'entities.fighter'
 -- States
-StateMachine = require 'states.statemachine'
-Menu         = require 'states.menu'
-Loading      = require 'states.loading'
-Game         = require 'states.game'
+_G.StateMachine    = require 'states.statemachine'
+_G.Menu            = require 'states.menu'
+_G.Loading         = require 'states.loading'
+_G.Game            = require 'states.game'
+_G.CharacterSelect = require 'states.characterselect'

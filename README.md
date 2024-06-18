@@ -2,7 +2,7 @@
 
 A tiny Love2D fighting game.
 
-![alt text](.github/image1.png)
+![alt text](.github/image1.png!)
 
 ![alt text](.github/image2.png)
 

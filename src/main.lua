@@ -1,8 +1,9 @@
 require 'dependencies'
 
-local Menu, Game, Loading, StateMachine, love, SoundManager, isDebug =
+local Menu, Game, CharacterSelect, Loading, StateMachine, love, SoundManager, isDebug =
     _G.Menu,
     _G.Game,
+    _G.CharacterSelect,
     _G.Loading,
     _G.StateMachine,
     _G.love,
@@ -21,7 +22,8 @@ function love.load()
         {
             ['menu'] = Menu,
             ['game'] = Game,
-            ['loading'] = Loading
+            ['loading'] = Loading,
+            ['characterselect'] = CharacterSelect
         }
     )
     gStateMachine:change('menu')
@@ -49,20 +51,6 @@ function love.keypressed(key, scancode, isrepeat)
     love.keyboard.keysPressed[key] = true
     if isDebug then
         print('Key Pressed: ', key) -- Debugging statement to check keypresses
-    end
-    if key == 'space' then
-        if gStateMachine.currentStateName == 'menu' then
-            gStateMachine:change(
-                'loading',
-                {
-                    songs = {
-                        {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.json'},
-                        {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.json'},
-                        {path = 'assets/game3.mp3', fftDataPath = 'assets/fft_data_game3.json'}
-                    }
-                }
-            )
-        end
     end
     if key == 'escape' then
         if gStateMachine.currentStateName == 'game' then

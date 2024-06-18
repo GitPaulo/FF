@@ -2,20 +2,26 @@ local love = _G.love
 local Menu = {}
 
 local TITLE_TEXT = 'Tiny Fighting Game'
-local BUTTON_TEXT = 'Start Game'
+local BUTTON_TEXT = 'Play'
+local CHARACTER_SELECT_TEXT = 'Characters'
 local BUTTON_WIDTH = 160
 local BUTTON_HEIGHT = 40
 local WINDOW_WIDTH = 425
 local WINDOW_HEIGHT = 281
 local BUTTON_X = (WINDOW_WIDTH - BUTTON_WIDTH) / 2
-local BUTTON_Y = WINDOW_HEIGHT / 2
+local BUTTON_Y = WINDOW_HEIGHT / 1.5
+local CHARACTER_BUTTON_Y = BUTTON_Y - BUTTON_HEIGHT - 10
 
 local FRAMES = 120
 local SPEED = 10
 
 local buttonHover = false
+local characterButtonHover = false
 
-function Menu:enter()
+function Menu:enter(params)
+    -- Selected Fighters
+    self.selectedFighters = params and params.selectedFighters or { 'Samurai1', 'Samurai2' }
+
     -- Background
     self.background = love.graphics.newImage('assets/background_menu_spritesheet.png')
     self:buildBackground()
@@ -32,6 +38,7 @@ function Menu:enter()
     -- Load background music
     self.backgroundMusic = love.audio.newSource('assets/menu.mp3', 'stream')
     self.backgroundMusic:setLooping(true)
+    love.audio.stop() -- stop current music
     love.audio.play(self.backgroundMusic)
 
     -- Set custom cursor
@@ -48,14 +55,12 @@ function Menu:update(dt)
     self.timer = self.timer + dt * SPEED
     -- Update the button hover state
     local mouseX, mouseY = love.mouse.getPosition()
-    if
+    buttonHover =
         mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= BUTTON_Y and
-            mouseY <= BUTTON_Y + BUTTON_HEIGHT
-     then
-        buttonHover = true
-    else
-        buttonHover = false
-    end
+        mouseY <= BUTTON_Y + BUTTON_HEIGHT
+    characterButtonHover =
+        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= CHARACTER_BUTTON_Y and
+        mouseY <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT
 
     -- Update the title animation
     self.titleScale = 1 + 0.1 * math.sin(love.timer.getTime() * 3) -- Oscillating scale
@@ -76,10 +81,25 @@ function Menu:render()
     love.graphics.printf(TITLE_TEXT, -WINDOW_WIDTH / 2, 0, WINDOW_WIDTH, 'center')
     love.graphics.pop()
 
-    -- Draw the button with hover effect
+    -- Draw the character select button with hover effect
     love.graphics.setFont(self.buttonFont)
+    if characterButtonHover then
+        love.graphics.setColor(1, 1, 0.8, 0.8) -- Slightly transparent white for hover
+    else
+        love.graphics.setColor(1, 1, 1, 1) -- Solid white for normal
+    end
+    love.graphics.rectangle('line', BUTTON_X, CHARACTER_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    love.graphics.printf(
+        CHARACTER_SELECT_TEXT,
+        BUTTON_X,
+        CHARACTER_BUTTON_Y + (BUTTON_HEIGHT / 5),
+        BUTTON_WIDTH,
+        'center'
+    )
+
+    -- Draw the start game button with hover effect
     if buttonHover then
-        love.graphics.setColor(1, 1, 1, 0.8) -- Slightly transparent white for hover
+        love.graphics.setColor(1, 1, 0.8, 0.8) -- Slightly transparent white for hover
     else
         love.graphics.setColor(1, 1, 1, 1) -- Solid white for normal
     end
@@ -103,10 +123,32 @@ function Menu:mousepressed(x, y, button)
                         {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.json'},
                         {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.json'},
                         {path = 'assets/game3.mp3', fftDataPath = 'assets/fft_data_game3.json'}
-                    }
+                    },
+                    selectedFighters = self.selectedFighters
                 }
             )
+        elseif
+            x >= BUTTON_X and x <= BUTTON_X + BUTTON_WIDTH and y >= CHARACTER_BUTTON_Y and
+                y <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT
+         then
+            self.stateMachine:change('characterselect')
         end
+    end
+end
+
+function Menu:keypressed(key)
+    if key == 'space' then
+        self.stateMachine:change(
+            'loading',
+            {
+                songs = {
+                    {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.json'},
+                    {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.json'},
+                    {path = 'assets/game3.mp3', fftDataPath = 'assets/fft_data_game3.json'}
+                },
+                selectedFighters = self.selectedFighters
+            }
+        )
     end
 end
 
