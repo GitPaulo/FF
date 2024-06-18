@@ -12,7 +12,7 @@ local WINDOW_WIDTH = 425
 local WINDOW_HEIGHT = 281
 local BUTTON_X = (WINDOW_WIDTH - BUTTON_WIDTH) / 2
 
-local SETTINGS_BUTTON_Y = WINDOW_HEIGHT / 1.45 - 2 * BUTTON_HEIGHT - 20
+local SETTINGS_BUTTON_Y = WINDOW_HEIGHT / 1.36 - 2 * BUTTON_HEIGHT - 20
 local CHARACTER_BUTTON_Y = SETTINGS_BUTTON_Y + BUTTON_HEIGHT + 10
 local PLAY_BUTTON_Y = CHARACTER_BUTTON_Y + BUTTON_HEIGHT + 10
 
@@ -59,6 +59,10 @@ function Menu:enter(params)
     love.audio.stop() -- stop current music
     love.audio.play(self.backgroundMusic)
 
+    -- Button hover sound
+    self.hoverSound = love.audio.newSource('assets/hover.mp3', 'static')
+    self.clickSound = love.audio.newSource('assets/click.mp3', 'static')
+
     -- Set custom cursor
     self.cursor = love.graphics.newImage('assets/cursor.png')
     love.mouse.setVisible(false)
@@ -70,21 +74,27 @@ function Menu:exit()
 end
 
 function Menu:update(dt)
-    self.timer = self.timer + dt * SPEED
-
-    -- Update the button hover states
     local mouseX, mouseY = love.mouse.getPosition()
-    playButtonHover =
-        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= PLAY_BUTTON_Y and
-        mouseY <= PLAY_BUTTON_Y + BUTTON_HEIGHT
-    characterButtonHover =
-        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= CHARACTER_BUTTON_Y and
-        mouseY <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT
-    settingsButtonHover =
-        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= SETTINGS_BUTTON_Y and
-        mouseY <= SETTINGS_BUTTON_Y + BUTTON_HEIGHT
+
+    -- Function to handle hover sound
+    local function handleHoverSound(hoverState, newHoverState)
+        if newHoverState and not hoverState then
+            love.audio.play(self.hoverSound:clone())
+        end
+        return newHoverState
+    end
+
+    -- Check for hover on play button
+    playButtonHover = handleHoverSound(playButtonHover, mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= PLAY_BUTTON_Y and mouseY <= PLAY_BUTTON_Y + BUTTON_HEIGHT)
+
+    -- Check for hover on character button
+    characterButtonHover = handleHoverSound(characterButtonHover, mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= CHARACTER_BUTTON_Y and mouseY <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT)
+
+    -- Check for hover on settings button
+    settingsButtonHover = handleHoverSound(settingsButtonHover, mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= SETTINGS_BUTTON_Y and mouseY <= SETTINGS_BUTTON_Y + BUTTON_HEIGHT)
 
     -- Update the title animation
+    self.timer = self.timer + dt * SPEED
     self.titleScale = 1 + 0.1 * math.sin(love.timer.getTime() * 3) -- Oscillating scale
 end
 
@@ -152,11 +162,13 @@ function Menu:mousepressed(x, y, button)
             x >= BUTTON_X and x <= BUTTON_X + BUTTON_WIDTH and y >= CHARACTER_BUTTON_Y and
                 y <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT
          then
+            love.audio.play(self.clickSound)
             self.stateMachine:change('characterselect')
         elseif
             x >= BUTTON_X and x <= BUTTON_X + BUTTON_WIDTH and y >= SETTINGS_BUTTON_Y and
                 y <= SETTINGS_BUTTON_Y + BUTTON_HEIGHT
          then
+            love.audio.play(self.clickSound)
             self.stateMachine:change('settings', self.settings)
         end
     end
