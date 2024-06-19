@@ -3,16 +3,16 @@ return {
         left = 'a',
         right = 'd',
         jump = 'w',
-        lightAttack = 'e',
-        mediumAttack = 'r',
-        heavyAttack = 't'
+        light = 'e',
+        medium = 'r',
+        heavy = 't'
     },
     fighter2Controls = {
         left = 'h',
         right = 'k',
         jump = 'u',
-        lightAttack = 'i',
-        mediumAttack = 'o',
-        heavyAttack = 'p'
+        light = 'i',
+        medium = 'o',
+        heavy = 'p'
     }
 }

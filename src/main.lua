@@ -1,6 +1,7 @@
 require 'dependencies'
 
-local Menu, Game, CharacterSelect, Loading, Settings, StateMachine, love, SoundManager =
+local KeyMappings, Menu, Game, CharacterSelect, Loading, Settings, StateMachine, love, SoundManager =
+    _G.KeyMappings,
     _G.Menu,
     _G.Game,
     _G.CharacterSelect,
@@ -8,7 +9,8 @@ local Menu, Game, CharacterSelect, Loading, Settings, StateMachine, love, SoundM
     _G.Settings,
     _G.StateMachine,
     _G.love,
-    _G.SoundManager -- Do not add _G.isDebug as it is changes by Settings
+    _G.SoundManager -- Do not add _G.isDebug as it is changed by Settings
+
 local gStateMachine
 
 function love.load()
@@ -36,12 +38,31 @@ function love.update(dt)
     SoundManager:update()
     gStateMachine:update(dt)
 
-    -- keep it after the state machine update
+    -- Keep it after the state machine update
     love.keyboard.keysPressed = {}
 end
 
 function love.draw()
     gStateMachine:render()
+end
+
+-- Create a table to store key states
+local keyStates = {}
+
+function love.keyboard.setKeyState(key, isPressed)
+    if key then  -- Add this check to ensure key is not nil
+        keyStates[key] = isPressed
+    else
+        print("Warning: Attempt to set state for nil key") -- Add a warning to debug potential issues
+    end
+end
+
+function love.keyboard.isDown(key)
+    return keyStates[key] or false
+end
+
+function love.keyboard.wasPressed(key)
+    return love.keyboard.keysPressed[key]
 end
 
 function love.mousepressed(x, y, button)
@@ -50,12 +71,13 @@ end
 
 function love.keypressed(key, scancode, isrepeat)
     love.keyboard.keysPressed[key] = true
+    love.keyboard.setKeyState(key, true)
     if _G.isDebug then
         print('Key Pressed: ', key) -- Debugging statement to check keypresses
     end
     gStateMachine:keypressed(key)
 end
 
-function love.keyboard.wasPressed(key)
-    return love.keyboard.keysPressed[key]
+function love.keyreleased(key)
+    love.keyboard.setKeyState(key, false)
 end

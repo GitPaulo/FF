@@ -23,9 +23,7 @@ function Game:enter(params)
     assert(self.fighter2, 'Fighter 2 must be provided to the game state')
 
     -- AI setup (assuming fighter2 is controlled by AI)
-    if params.useAi then
-        self.aiController = AIController:new(self.fighter2, self.fighter1)
-    end
+    self.aiController = params.useAI and AIController:new(self.fighter2, self.fighter1) or nil
 
     -- FFT visualizer setup
     self.fftBufferSize = 64
@@ -96,7 +94,7 @@ function Game:update(dt)
         -- Wait for death animation
         if not isDeathAnimationPlaying then
             self.gameOver = true
-            self.winner = isDraw and "Draw!" or winner.name
+            self.winner = isDraw and 'Draw!' or winner.name
         end
     end
 
@@ -133,13 +131,13 @@ function Game:render()
         -- Apply semi-transparent red overlay
         love.graphics.setColor(1, 0, 0, 0.5)
         love.graphics.rectangle('fill', 0, 0, SPRITE_WIDTH, SPRITE_HEIGHT)
-        love.graphics.setColor(1, 1, 1, 1)  -- Reset color to white
+        love.graphics.setColor(1, 1, 1, 1) -- Reset color to white
 
         -- Render game over text
         love.graphics.setFont(self.gameOverFont)
-        love.graphics.printf("Game Over", 0, SPRITE_HEIGHT / 2 - 60, SPRITE_WIDTH, 'center')
+        love.graphics.printf('Game Over', 0, SPRITE_HEIGHT / 2 - 60, SPRITE_WIDTH, 'center')
         love.graphics.setFont(self.winnerFont)
-        love.graphics.printf(self.winner .. " wins!", 0, SPRITE_HEIGHT / 2 - 10, SPRITE_WIDTH, 'center')
+        love.graphics.printf(self.winner .. ' wins!', 0, SPRITE_HEIGHT / 2 - 10, SPRITE_WIDTH, 'center')
         love.graphics.setFont(self.instructionsFont)
         love.graphics.printf("Press 'ESC' to return to Main Menu", 0, SPRITE_HEIGHT / 2 + 20, SPRITE_WIDTH, 'center')
     end
@@ -149,7 +147,7 @@ function Game:render()
         love.graphics.setFont(self.fpsFont)
         love.graphics.setColor(1, 1, 1, 1)
         local fps = love.timer.getFPS()
-        love.graphics.print("FPS: " .. fps, SPRITE_WIDTH - 60, 10)
+        love.graphics.print('FPS: ' .. fps, SPRITE_WIDTH - 60, 10)
     end
 end
 

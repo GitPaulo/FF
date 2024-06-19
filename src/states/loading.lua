@@ -22,7 +22,7 @@ function Loading:enter(params)
             self:loadFighters()
             self.stateMachine:change(
                 'game',
-                {useAi = self.useAI, songs = self.songs, fighter1 = self.fighter1, fighter2 = self.fighter2}
+                {useAI = self.useAI, songs = self.songs, fighter1 = self.fighter1, fighter2 = self.fighter2}
             )
         end
     )
@@ -38,6 +38,7 @@ function Loading:loadFighters()
     self.fighter1 =
         Fighter:new(
         1,
+        false, -- AI
         fighter1Data.name,
         startPos1[1],
         startPos1[2],
@@ -51,7 +52,8 @@ function Loading:loadFighters()
 
     self.fighter2 =
         Fighter:new(
-        self.useAI and 3 or 2,
+        2,
+        self.useAI, -- AI
         fighter2Data.name,
         startPos2[1],
         startPos2[2],

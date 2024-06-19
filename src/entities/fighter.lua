@@ -3,7 +3,7 @@ local Anim8 = require 'lib.anim8'
 local Class, love, SoundManager = _G.Class, _G.love, _G.SoundManager
 local Fighter = Class:extend()
 
-function Fighter:init(id, name, startingX, startingY, scale, controls, traits, hitboxes, spriteConfig, soundFXConfig)
+function Fighter:init(id, isAI, name, startingX, startingY, scale, controls, traits, hitboxes, spriteConfig, soundFXConfig)
     -- Character Properties
     self.id = id
     self.name = name
@@ -58,6 +58,7 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
     self.damageApplied = false
     -- Other
     self.gravity = 1000
+    self.isAI = isAI or false
 
     -- Animation, Sprites and sound
     self.spritesheets = self:loadSpritesheets(spriteConfig)
@@ -259,16 +260,18 @@ function Fighter:handleMovement(dt, other)
     end
 
     -- Detect double-tap for dashing
-    if love.keyboard.wasPressed(self.controls.left) then
-        if currentTime - (self.lastTapTime.left or 0) < 0.3 then
-            self:startDash(-1)
+    if not self.isAI then -- AI doesn't need to check for double-tap
+        if love.keyboard.wasPressed(self.controls.left) then
+            if currentTime - (self.lastTapTime.left or 0) < 0.3 then
+                self:startDash(-1)
+            end
+            self.lastTapTime.left = currentTime
+        elseif love.keyboard.wasPressed(self.controls.right) then
+            if currentTime - (self.lastTapTime.right or 0) < 0.3 then
+                self:startDash(1)
+            end
+            self.lastTapTime.right = currentTime
         end
-        self.lastTapTime.left = currentTime
-    elseif love.keyboard.wasPressed(self.controls.right) then
-        if currentTime - (self.lastTapTime.right or 0) < 0.3 then
-            self:startDash(1)
-        end
-        self.lastTapTime.right = currentTime
     end
 
     -- Handle normal movement
@@ -304,9 +307,6 @@ function Fighter:handleMovement(dt, other)
 end
 
 function Fighter:startDash(direction)
-    if self.id > 2 then
-        return -- ai doesn't dash :D
-    end
     if self.stamina >= self.dashStaminaCost then
         self.isDashing = true
         self.direction = direction
@@ -415,11 +415,11 @@ function Fighter:handleAttacks()
         return -- Prevent new attacks from starting if already attacking or recovering or hit
     end
 
-    if love.keyboard.wasPressed(self.controls.lightAttack) then
+    if love.keyboard.wasPressed(self.controls.light) then
         self:startAttack('light')
-    elseif love.keyboard.wasPressed(self.controls.mediumAttack) then
+    elseif love.keyboard.wasPressed(self.controls.medium) then
         self:startAttack('medium')
-    elseif love.keyboard.wasPressed(self.controls.heavyAttack) then
+    elseif love.keyboard.wasPressed(self.controls.heavy) then
         self:startAttack('heavy')
     end
 end
