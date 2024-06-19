@@ -27,35 +27,42 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
     self.dy = 0
     self.direction = (id == 2) and -1 or 1 -- Set direction to right for player 1 and left for player 2
     self.state = 'idle'
-    self.gravity = 1000
+    self.isBlocking = false
+    self.isBlockingDamage = false
+    self.isAirborne = false
+    self.isDashing = false
+    self.isRecovering = false
+    self.isClashing = false
+    -- Character State: attack
     self.attackType = nil
     self.lastAttackType = nil
     self.attackEndTime = 0
     self.recoveryEndTime = 0
-    self.hitEndTime = 0
-    self.damageApplied = false
-    self.isBlocking = false
-    self.isBlockingDamage = false
-    self.isJumping = false
-    self.isDashing = false
+    -- Character State: dash
     self.lastTapTime = {left = 0, right = 0}
     self.dashDuration = 0.25
     self.dashEndTime = 0
     self.dashStaminaCost = 25
     self.deathAnimationFinished = false
+    -- Character State: clash
     self.opponentAttackType = nil
     self.opponentAttackEndTime = 0
-    self.isClashing = false
     self.clashTime = 0
     self.knockbackTargetX = self.x
     self.knockbackSpeed = 400
     self.knockbackActive = false
     self.knockbackDelay = 0.6
     self.knockbackDelayTimer = 0
+    -- Character State: hit
+    self.hitEndTime = 0
+    self.damageApplied = false
+    -- Other
+    self.gravity = 1000
 
-    -- Animation and Sprites
+    -- Animation, Sprites and sound
     self.spritesheets = self:loadSpritesheets(spriteConfig)
     self.animations = self:loadAnimations(spriteConfig)
+    self.animationDurations = self:loadAnimationDurations(spriteConfig)
     self.sounds = self:loadSoundFX(soundFXConfig)
 
     -- Set the default animation to idle
@@ -118,6 +125,18 @@ function Fighter:loadAnimations(configs)
     end
 
     return animations
+end
+
+function Fighter:loadAnimationDurations(configs)
+    local durations = {}
+    for stateOrAttack, config in pairs(configs) do
+        local totalDuration = 0
+        for _, duration in ipairs(config.frameDuration) do
+            totalDuration = totalDuration + duration
+        end
+        durations[stateOrAttack] = totalDuration
+    end
+    return durations
 end
 
 function Fighter:loadSoundFX(configs)
@@ -184,8 +203,14 @@ function Fighter:updateState(dt, other)
 
     -- Transition from attacking to recovery if the attack period has ended
     if isAttacking and isAttackPeriodOver then
+        print('*********Attack over')
         self.attackType = nil
-        self:setState('idle')
+        if self.isAirborne then
+            print('*********Attack over - JUMP')
+            self:setState('jump')
+        else
+            self:setState('idle')
+        end
 
         if not self.isRecovering then
             self:startRecovery()
@@ -257,7 +282,7 @@ function Fighter:handleMovement(dt, other)
         end
         if not self:checkXCollision(newX, self.y, other) then
             self.x = newX
-            if not self.isJumping then
+            if not self.isAirborne then
                 self:setState('run')
             end
         end
@@ -269,11 +294,11 @@ function Fighter:handleMovement(dt, other)
         end
         if not self:checkXCollision(newX, self.y, other) then
             self.x = newX
-            if not self.isJumping then
+            if not self.isAirborne then
                 self:setState('run')
             end
         end
-    elseif not self.isJumping then
+    elseif not self.isAirborne then
         self:setState('idle') -- Set state to idle if no movement keys are pressed
     end
 
@@ -310,50 +335,90 @@ end
 
 function Fighter:handleJumping(dt, other)
     local windowHeight = love.graphics.getHeight()
-    local groundLevel = windowHeight - 10 -- from the bottom
+    local groundLevel = windowHeight - 10 -- Define the ground level
+    local skyLevel = 0 -- Define the top level (skybox)
+
+    -- Boolean flags for readability
+    local isAttacking = self.state == 'attacking'
+    local isHit = self.state == 'hit'
+    local isRecovering = self.isRecovering
+    local isClashing = self.isClashing
+    local isAirborne = self.isAirborne
+    local isFalling = self.dy > 0
+    local isAllowedToJump = not isAirborne and not isAttacking and not isHit and not isRecovering and not isClashing
+    local isAllowedToChangeState = not isAttacking and not isHit and not isRecovering and not isClashing
 
     -- Update vertical position due to gravity
     self.dy = self.dy + self.gravity * dt
-    local newY = self.y + self.dy * dt
 
-    if newY >= groundLevel - self.height then
+    -- Potential new position after applying gravity
+    -- REMEMBER: y-axis is inverted in LOVE2D, BIGGER NUMBER = LOWER POSITION
+    local newY = self.y + self.dy * dt
+    local isOnOrBelowGround = newY >= groundLevel - self.height -- Check if the new position is on the ground
+    if self.id == 1 then
+        print(
+            '[Jump]',
+            'dy = ',
+            self.dy,
+            'newY = ',
+            newY,
+            'isOnOrBelowGround = ',
+            isOnOrBelowGround,
+            'isAirborne = ',
+            isAirborne,
+            'isFalling = ',
+            isFalling
+        )
+    end
+
+    -- Check for collision with the ground
+    if isOnOrBelowGround then
         self.y = groundLevel - self.height
-        self.isJumping = false
+        self.isAirborne = false
         self.dy = 0
-        if
-            not love.keyboard.isDown(self.controls.left) and not love.keyboard.isDown(self.controls.right) and
-                self.state ~= 'attacking' and
-                not self.isRecovering and
-                not self.isClashing and
-                self.state ~= 'hit'
-         then
-            self:setState('idle')
+        if self.id == 1 then
+            print('======> On ground!!!')
         end
+        if isAllowedToChangeState then
+            if self.id == 1 then
+                print('======> Allowed to change state!!!')
+            end
+            if not love.keyboard.isDown(self.controls.left) and not love.keyboard.isDown(self.controls.right) then
+                self:setState('idle') -- Set state to idle if no movement keys are pressed
+            elseif isFalling then
+                self:setState('jump') -- Set state to jump if the fighter is falling
+            end
+        end
+    elseif newY <= skyLevel then
+        -- Prevent fighter from moving above the top of the screen
+        self.y = skyLevel
+        self.dy = 0
     elseif not self:checkYCollision(newY, other) then
+        -- Update position if no collision with the opponent
         self.y = newY
+        self.isAirborne = true
     else
-        if self.dy > 0 then
-            self.y = other.y - self.height
+        -- Check for collision with the other fighter
+        if isFalling then
+            self.y = other.y - self.height -- Adjust position if colliding while falling
         else
-            self.y = other.y + other.height
+            self.y = other.y + other.height -- Adjust position if colliding while rising
         end
         self.dy = 0
-        self.isJumping = false
-        if self.state == 'jump' then
-            self:setState('idle') -- Ensure state is set to idle when landing
+        if self.state == 'jump' and isAllowedToChangeState then
+            if self.id == 1 then
+                print('======> COLLISION WITH OTHER IFHGTER!')
+            end
+            self:setState('jump') -- Keep state as jump if conditions allow
         end
     end
 
-    -- Only allow initiating a jump if not in hit, attacking, or recovering state
-    if
-        not self.isJumping and self.state ~= 'attacking' and self.state ~= 'hit' and not self.isRecovering and
-            not self.isClashing and
-            love.keyboard.wasPressed(self.controls.jump) and
-            self.y >= groundLevel - self.height
-     then
+    -- Only allow initiating a jump if certain conditions are met
+    if isAllowedToJump and love.keyboard.wasPressed(self.controls.jump) then
         self.dy = self.jumpStrength
-        self.isJumping = true
+        self.isAirborne = true
         self:setState('jump')
+        -- Play jump sound
         SoundManager:playSound(self.sounds.jump)
     end
 end
@@ -378,18 +443,20 @@ function Fighter:handleAttacks()
 end
 
 function Fighter:startAttack(attackType)
-    self.state = 'attacking' -- Dont use self.setState() here
-    self.attackType = attackType -- gets cleared
-    self.lastAttackType = self.attackType
+    self.state = 'attacking' -- Don't use self.setState() here
+    self.attackType = attackType
+    self.lastAttackType = attackType
     self.damageApplied = false
 
-    -- Calculate the duration of the attack animation
-    local attackDuration = self.currentAnimation.totalDuration
+    -- Get the precomputed attack duration
+    local attackDuration = self.animationDurations[attackType]
     self.attackEndTime = love.timer.getTime() + attackDuration
+
+    -- Play the attack sound
     if self.sounds[attackType] then
-        -- Delay sound to match halfway through the attack animation duration
-        SoundManager:playSound(self.sounds[attackType], {delay = attackDuration / 2})
+        SoundManager:playSound(self.sounds[attackType])
     end
+
     -- Set the current animation to the attack animation
     self.currentAnimation = self.animations[attackType]
     self.currentAnimation:gotoFrame(1)
@@ -425,7 +492,6 @@ function Fighter:checkForKnockback(dt)
         self.knockbackDelayTimer = self.knockbackDelayTimer - dt
         if self.knockbackDelayTimer <= 0 then
             self.knockbackActive = true -- Activate knockback after delay
-            self:setState('idle')
         end
         return
     end
@@ -530,7 +596,13 @@ function Fighter:render(other)
             'state:',
             self.state,
             'attackType:',
-            self.attackType
+            self.attackType,
+            'isRecovering:',
+            self.isRecovering,
+            'isClashing:',
+            self.isClashing,
+            'isKnockbackActive:',
+            self.knockbackActive
         )
     end
 

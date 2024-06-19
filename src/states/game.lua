@@ -42,6 +42,9 @@ function Game:enter(params)
 
     -- Load font for FPS counter
     self.fpsFont = love.graphics.newFont(12)
+    self.gameOverFont = love.graphics.newFont(32)
+    self.winnerFont = love.graphics.newFont(20)
+    self.instructionsFont = love.graphics.newFont(16)
 
     -- Load clash sound effect
     self.clashSound = love.audio.newSource('assets/clash.mp3', 'static')
@@ -83,19 +86,25 @@ function Game:update(dt)
     end
 
     -- Check for game over
-    if self.fighter1.health <= 0 and self.fighter1.deathAnimationFinished then
-        self.gameOver = true
-        self.winner = 'Fighter 2 Wins!'
-    elseif self.fighter2.health <= 0 and self.fighter2.deathAnimationFinished then
-        self.gameOver = true
-        self.winner = 'Fighter 1 Wins!'
+    local isGameOver = self.fighter1.health <= 0 or self.fighter2.health <= 0
+    if isGameOver then
+        local winner = self.fighter1.health > 0 and self.fighter1 or self.fighter2
+        local isDraw = self.fighter1.health == self.fighter2.health
+        local isDeathAnimationPlaying = self.fighter1.isDeathAnimationPlaying or self.fighter2.isDeathAnimationPlaying
+        -- stop music
+        self.music:stop()
+        -- Wait for death animation
+        if not isDeathAnimationPlaying then
+            self.gameOver = true
+            self.winner = isDraw and "Draw!" or winner.name
+        end
     end
 
     -- Update FFT data index
     self.fftDataIndex = (self.fftDataIndex % #self.fftData) + 1
 
     -- Check if the current song has finished playing
-    if not self.music:isPlaying() then
+    if not isGameOver and not self.music:isPlaying() then
         self.currentSongIndex = self.currentSongIndex % #self.songs + 1
         self:playCurrentSong()
     end
@@ -121,7 +130,17 @@ function Game:render()
 
     -- Render game over screen if game is over
     if self.gameOver then
-        love.graphics.printf(self.winner, 0, SPRITE_HEIGHT / 2 - 20, SPRITE_WIDTH, 'center')
+        -- Apply semi-transparent red overlay
+        love.graphics.setColor(1, 0, 0, 0.5)
+        love.graphics.rectangle('fill', 0, 0, SPRITE_WIDTH, SPRITE_HEIGHT)
+        love.graphics.setColor(1, 1, 1, 1)  -- Reset color to white
+
+        -- Render game over text
+        love.graphics.setFont(self.gameOverFont)
+        love.graphics.printf("Game Over", 0, SPRITE_HEIGHT / 2 - 60, SPRITE_WIDTH, 'center')
+        love.graphics.setFont(self.winnerFont)
+        love.graphics.printf(self.winner .. " wins!", 0, SPRITE_HEIGHT / 2 - 10, SPRITE_WIDTH, 'center')
+        love.graphics.setFont(self.instructionsFont)
         love.graphics.printf("Press 'ESC' to return to Main Menu", 0, SPRITE_HEIGHT / 2 + 20, SPRITE_WIDTH, 'center')
     end
 
