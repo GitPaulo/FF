@@ -32,3 +32,6 @@ I do not own any of the assets used in this game.
 - Fix death animation and sound
 - Fix basic AI and passing logic
 - Fix sprite scaling in character select
+- Countdown to fight and enter anims
+- Interact with rock (pray)
+- Entities?
