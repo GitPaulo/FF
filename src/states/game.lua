@@ -42,6 +42,9 @@ function Game:enter(params)
 
     -- Load font for FPS counter
     self.fpsFont = love.graphics.newFont(12)
+
+    -- Load clash sound effect
+    self.clashSound = love.audio.newSource('assets/clash.mp3', 'static')
 end
 
 function Game:exit()
@@ -74,6 +77,11 @@ function Game:update(dt)
         self.fighter2:takeDamage(hitbox.damage)
     end
 
+    -- Check for clash
+    if self.fighter1.isClashing and self.fighter2.isClashing and not self.clashSound:isPlaying() then
+        love.audio.play(self.clashSound)
+    end
+
     -- Check for game over
     if self.fighter1.health <= 0 and self.fighter1.deathAnimationFinished then
         self.gameOver = true
@@ -102,8 +110,8 @@ function Game:render()
     love.graphics.draw(self.background, self.background_quads[currentFrame], 0, 0)
 
     -- Render fighters
-    self.fighter1:render()
-    self.fighter2:render()
+    self.fighter1:render(self.fighter2)
+    self.fighter2:render(self.fighter1)
 
     -- Render health bars
     self:renderHealthBars()

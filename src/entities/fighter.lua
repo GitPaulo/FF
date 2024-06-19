@@ -51,6 +51,15 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
     self.dashEndTime = 0
     self.dashStaminaCost = 25
     self.deathAnimationFinished = false
+    self.opponentAttackType = nil
+    self.opponentAttackEndTime = 0
+    self.isClashing = false
+    self.clashTime = 0
+    self.knockbackTargetX = self.x
+    self.knockbackSpeed = 400
+    self.knockbackActive = false
+    self.knockbackDelay = 0.6
+    self.knockbackDelayTimer = 0
 
     -- Animation and Sprites
     self.spritesheets = self:loadSpritesheets(spriteConfig)
@@ -61,7 +70,7 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
     self.currentAnimation = self.animations.idle
 
     -- Font
-    self.blockedFont = love.graphics.newFont(18)
+    self.eventFont = love.graphics.newFont(20)
 end
 
 function Fighter:validateFighterParameters()
@@ -140,7 +149,7 @@ function Fighter:update(dt, other)
         -- Handle all actions except death
         self:updateActions(dt, other)
         -- Update the state of the fighter after handling actions
-        self:updateState(dt)
+        self:updateState(dt, other)
     else
         -- Handle death animation
         self:checkDeathAnimationFinished()
@@ -151,12 +160,17 @@ function Fighter:update(dt, other)
 end
 
 function Fighter:updateActions(dt, other)
+    -- Opponent
+    self.opponentAttackType = other.attackType
+    self.opponentAttackEndTime = other.attackEndTime
+
+    -- Self
     self:handleMovement(dt, other)
     self:handleJumping(dt, other)
     self:handleAttacks()
 end
 
-function Fighter:updateState(dt)
+function Fighter:updateState(dt, other)
     local currentTime = love.timer.getTime()
     local isAttacking = self.state == 'attacking'
     local isHit = self.state == 'hit'
@@ -165,20 +179,29 @@ function Fighter:updateState(dt)
     local isHitPeriodOver = currentTime >= self.hitEndTime
     local isIdle = self.state == 'idle'
 
+    -- Check for clash
+    if not self.isClashing then
+        self:checkForClash(other)
+    end
+
+    -- Handle knockback
+    if self.knockbackActive or self.knockbackDelayTimer > 0 then
+        self:checkForKnockback(dt)
+    end
+
     -- Transition from attacking to recovery if the attack period has ended
     if isAttacking and isAttackPeriodOver then
         self.attackType = nil
+        self:setState('idle')
+
         if not self.isRecovering then
             self:startRecovery()
-        else
-            self:setState('idle')
         end
     end
 
     -- End recovery period if the recovery time has passed
     if self.isRecovering and isRecoveryPeriodOver then
         self:endRecovery()
-        self:setState('idle')
     end
 
     -- Transition from hit to idle if the hit period has ended
@@ -193,12 +216,12 @@ function Fighter:updateState(dt)
 end
 
 function Fighter:handleMovement(dt, other)
-    local windowWidth = love.graphics.getWidth()
-    local currentTime = love.timer.getTime()
-
-    if self.state == 'attacking' or self.state == 'hit' then
+    if self.state == 'attacking' or self.state == 'hit' or self.isClashing then
         return
     end
+
+    local windowWidth = love.graphics.getWidth()
+    local currentTime = love.timer.getTime()
 
     -- Handle dashing
     if self.isDashing then
@@ -308,6 +331,7 @@ function Fighter:handleJumping(dt, other)
             not love.keyboard.isDown(self.controls.left) and not love.keyboard.isDown(self.controls.right) and
                 self.state ~= 'attacking' and
                 not self.isRecovering and
+                not self.isClashing and
                 self.state ~= 'hit'
          then
             self:setState('idle')
@@ -330,6 +354,7 @@ function Fighter:handleJumping(dt, other)
     -- Only allow initiating a jump if not in hit, attacking, or recovering state
     if
         not self.isJumping and self.state ~= 'attacking' and self.state ~= 'hit' and not self.isRecovering and
+            not self.isClashing and
             love.keyboard.wasPressed(self.controls.jump) and
             self.y >= groundLevel - self.height
      then
@@ -393,6 +418,96 @@ function Fighter:endRecovery()
     self.isRecovering = false
 end
 
+function Fighter:checkForClash(other)
+    if self.state == 'attacking' and other.state == 'attacking' and not self.isRecovering and not other.isRecovering then
+        local myHitbox = self:getHitbox()
+        local opponentHitbox = other:getHitbox()
+        if self:checkHitboxOverlap(myHitbox, opponentHitbox) then
+            self:resolveClash(other)
+        end
+    end
+end
+
+function Fighter:checkForKnockback(dt)
+    if self.knockbackDelayTimer > 0 then
+        self.knockbackDelayTimer = self.knockbackDelayTimer - dt
+        if self.knockbackDelayTimer <= 0 then
+            self.knockbackActive = true -- Activate knockback after delay
+            self:setState('idle')
+        end
+        return
+    end
+
+    if self.knockbackActive then
+        if math.abs(self.x - self.knockbackTargetX) < 1 then
+            self.knockbackActive = false -- Stop knockback when close to target
+        else
+            local knockbackStep = self.knockbackSpeed * dt * self.direction * -1 -- Move in the opposite direction
+            if math.abs(knockbackStep) > math.abs(self.knockbackTargetX - self.x) then
+                self.x = self.knockbackTargetX -- Directly set to target if overshoot
+            else
+                self.x = self.x + knockbackStep -- Move incrementally towards target
+            end
+        end
+    end
+end
+
+function Fighter:checkHitboxOverlap(hitbox1, hitbox2)
+    return hitbox1.x < hitbox2.x + hitbox2.width and hitbox1.x + hitbox1.width > hitbox2.x and
+        hitbox1.y < hitbox2.y + hitbox2.height and
+        hitbox1.y + hitbox1.height > hitbox2.y
+end
+
+function Fighter:resolveClash(other)
+    local currentTime = love.timer.getTime()
+
+    if self.attackType == other.attackType then
+        -- Both attacks are of the same type, both fighters are knocked back
+        self:applyKnockback()
+        other:applyKnockback()
+        self.isClashing = true
+        other.isClashing = true
+        self.clashTime = currentTime
+        other.clashTime = currentTime
+    else
+        -- Different attack types, the heavier one wins
+        local myAttackWeight = self:getAttackWeight(self.attackType)
+        local opponentAttackWeight = self:getAttackWeight(other.attackType)
+
+        if myAttackWeight > opponentAttackWeight then
+            self:winClash(other)
+        else
+            other:winClash(self)
+        end
+        self.isClashing = true
+        other.isClashing = true
+        self.clashTime = currentTime
+        other.clashTime = currentTime
+    end
+end
+
+function Fighter:getAttackWeight(attackType)
+    local weights = {
+        light = 1,
+        medium = 2,
+        heavy = 3
+    }
+    return weights[attackType] or 0
+end
+
+function Fighter:applyKnockback()
+    self.knockbackTargetX = self.x + (self.direction * -100) -- Set the target position for knockback
+    self.knockbackActive = false -- Knockback will be active after delay
+    self.knockbackDelayTimer = self.knockbackDelay -- Set the delay timer
+end
+
+function Fighter:winClash(loser)
+    loser:takeDamage(self.hitboxes[loser.attackType].damage / 2) -- Half damage
+    loser:applyKnockback()
+    loser:setState('idle')
+    self:setState('idle')
+end
+
 function Fighter:setState(newState)
     -- Only change state if the new state is different from the current state
     if self.state == newState then
@@ -406,7 +521,7 @@ function Fighter:setState(newState)
     self.currentAnimation:gotoFrame(1)
 end
 
-function Fighter:render()
+function Fighter:render(other)
     -- Sprite config list includes states and attack types as key for animations
     -- self.attackType gets cleared on recovery start
     local spriteName = self.state == 'attacking' and self.lastAttackType or self.state
@@ -470,10 +585,23 @@ function Fighter:render()
 
     -- Draw blocking text
     if self.isBlockingDamage then
-        love.graphics.setFont(self.blockedFont)
+        love.graphics.setFont(self.eventFont)
         love.graphics.setColor(1, 1, 0, 1)
         love.graphics.print('Blocked!', self.x - 14, self.y - 20)
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
+    end
+
+    -- Draw clashing
+    local currentTime = love.timer.getTime()
+    if self.isClashing and currentTime - self.clashTime < 1 then -- Display for 1 second
+        love.graphics.setFont(self.eventFont)
+        love.graphics.setColor(1, 1, 0, 1)
+        local clashX = (self.x + other.x) / 2
+        local clashY = math.min(self.y, other.y) - 20
+        love.graphics.printf('Clash!', clashX - 50, clashY, 100, 'center')
+        love.graphics.setColor(1, 1, 1, 1) -- Reset color
+    else
+        self.isClashing = false
     end
 end
 
