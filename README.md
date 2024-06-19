@@ -26,8 +26,9 @@ I do not own any of the assets used in this game.
 
 ## TODO:
 
-- Fix F2 running anim bug after attack
-- Resize BLOCKED! text
+- Improve clash timing and add stamina consideration
+- Attack duration calculations might be causing some issues
+- Anim8 per frame helping?
 - Fix death animation and sound
 - Fix basic AI and passing logic
 - Fix sprite scaling in character select

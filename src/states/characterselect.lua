@@ -29,7 +29,7 @@ function CharacterSelect:enter(params)
             end
 
             -- Get number of frames
-            local numFrames = character.spriteConfig.idle[2]
+            local numFrames = character.spriteConfig.idle.frames
             if _G.isDebug then
                 print('Number of frames:', numFrames)
             end

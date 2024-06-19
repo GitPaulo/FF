@@ -20,15 +20,7 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
     self.maxStamina = traits.stamina or 100
     self.jumpStrength = -(traits.jumpStrength or 600)
     self.dashSpeed = traits.dashSpeed or 500
-    self.hitboxes =
-        hitboxes or
-        {
-            light = {width = 100, height = 20, recovery = 0.5, damage = 5},
-            medium = {width = 150, height = 30, recovery = 0.7, damage = 10},
-            heavy = {width = 200, height = 40, recovery = 1.0, damage = 20}
-        }
-
-    -- Helps a lot
+    self.hitboxes = hitboxes or {}
     self:validateFighterParameters()
 
     -- Character State
@@ -95,14 +87,14 @@ function Fighter:loadSpritesheets(configs)
     local spritesheets = {}
 
     for key, config in pairs(configs) do
-        spritesheets[key] = love.graphics.newImage(config[1])
+        spritesheets[key] = love.graphics.newImage(config.path)
         print(
             'Loaded spritesheet for',
             key,
             'from',
-            config[1],
+            config.path,
             'with frame count:',
-            config[2],
+            config.frames,
             'and dimensions:',
             spritesheets[key]:getDimensions()
         )
@@ -115,13 +107,14 @@ function Fighter:loadAnimations(configs)
     local animations = {}
 
     for key, config in pairs(configs) do
-        local path = config[1]
-        local frameCount = config[2]
+        local path = config.path
+        local frameCount = config.frames
+        local frameDuration = config.frameDuration
         local spritesheet = self.spritesheets[key]
         local frameWidth = math.floor(spritesheet:getWidth() / frameCount)
         local frameHeight = spritesheet:getHeight()
 
-        animations[key] = self:createAnimation(spritesheet, frameWidth, frameHeight, frameCount, 0.1)
+        animations[key] = self:createAnimation(spritesheet, frameWidth, frameHeight, frameCount, frameDuration)
     end
 
     return animations
@@ -135,13 +128,13 @@ function Fighter:loadSoundFX(configs)
     return sounds
 end
 
-function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, duration)
+function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, frameDuration)
     if not image then
         print('Error: Image for animation is nil')
         return nil
     end
     local grid = Anim8.newGrid(frameWidth, frameHeight, image:getWidth(), image:getHeight())
-    return Anim8.newAnimation(grid('1-' .. frameCount, 1), duration)
+    return Anim8.newAnimation(grid('1-' .. frameCount, 1), frameDuration)
 end
 
 function Fighter:update(dt, other)
@@ -391,12 +384,11 @@ function Fighter:startAttack(attackType)
     self.damageApplied = false
 
     -- Calculate the duration of the attack animation
-    local attackDuration = self.hitboxes[attackType].duration
-    local totalDuration = self.currentAnimation.totalDuration
+    local attackDuration = self.currentAnimation.totalDuration
     self.attackEndTime = love.timer.getTime() + attackDuration
     if self.sounds[attackType] then
         -- Delay sound to match halfway through the attack animation duration
-        SoundManager:playSound(self.sounds[attackType], {delay = totalDuration / 2})
+        SoundManager:playSound(self.sounds[attackType], {delay = attackDuration / 2})
     end
     -- Set the current animation to the attack animation
     self.currentAnimation = self.animations[attackType]
