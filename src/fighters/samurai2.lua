@@ -3,9 +3,9 @@ return {
     scale = {x = 1.35, y = 1.3, ox = 0, oy = -2, width = 50, height = 80},
     traits = {health = 1, speed = 185, stamina = 100, dashSpeed = 515, jumpStrength = 600},
     hitboxes = {
-        light = {width = 90, height = 100, recovery = 2.25, damage = 8},
+        light = {width = 90, height = 100, recovery = 0.2, damage = 8},
         medium = {width = 90, height = 130, recovery = 0.4, damage = 12},
-        heavy = {width = 90, height = 130, recovery = 0.8, damage = 24}
+        heavy = {width = 90, height = 130, recovery = 0.7, damage = 24}
     },
     spriteConfig = {
         idle = {path = 'assets/fighters/Samurai2/Idle.png', frames = 4, frameDuration = {0.1, 0.1, 0.1, 0.1}},

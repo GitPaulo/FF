@@ -51,7 +51,7 @@ function Fighter:init(id, name, startingX, startingY, scale, controls, traits, h
     self.knockbackTargetX = self.x
     self.knockbackSpeed = 400
     self.knockbackActive = false
-    self.knockbackDelay = 0.6
+    self.knockbackDelay = 0.5
     self.knockbackDelayTimer = 0
     -- Character State: hit
     self.hitEndTime = 0
@@ -203,10 +203,8 @@ function Fighter:updateState(dt, other)
 
     -- Transition from attacking to recovery if the attack period has ended
     if isAttacking and isAttackPeriodOver then
-        print('*********Attack over')
         self.attackType = nil
         if self.isAirborne then
-            print('*********Attack over - JUMP')
             self:setState('jump')
         else
             self:setState('idle')
@@ -234,7 +232,7 @@ function Fighter:updateState(dt, other)
 end
 
 function Fighter:handleMovement(dt, other)
-    if self.state == 'attacking' or self.state == 'hit' or self.isClashing then
+    if self.state == 'attacking' or self.state == 'hit' or self.isClashing or self.knockbackActive then
         return
     end
 
@@ -355,34 +353,13 @@ function Fighter:handleJumping(dt, other)
     -- REMEMBER: y-axis is inverted in LOVE2D, BIGGER NUMBER = LOWER POSITION
     local newY = self.y + self.dy * dt
     local isOnOrBelowGround = newY >= groundLevel - self.height -- Check if the new position is on the ground
-    if self.id == 1 then
-        print(
-            '[Jump]',
-            'dy = ',
-            self.dy,
-            'newY = ',
-            newY,
-            'isOnOrBelowGround = ',
-            isOnOrBelowGround,
-            'isAirborne = ',
-            isAirborne,
-            'isFalling = ',
-            isFalling
-        )
-    end
 
     -- Check for collision with the ground
     if isOnOrBelowGround then
         self.y = groundLevel - self.height
         self.isAirborne = false
         self.dy = 0
-        if self.id == 1 then
-            print('======> On ground!!!')
-        end
         if isAllowedToChangeState then
-            if self.id == 1 then
-                print('======> Allowed to change state!!!')
-            end
             if not love.keyboard.isDown(self.controls.left) and not love.keyboard.isDown(self.controls.right) then
                 self:setState('idle') -- Set state to idle if no movement keys are pressed
             elseif isFalling then
@@ -393,24 +370,25 @@ function Fighter:handleJumping(dt, other)
         -- Prevent fighter from moving above the top of the screen
         self.y = skyLevel
         self.dy = 0
-    elseif not self:checkYCollision(newY, other) then
-        -- Update position if no collision with the opponent
-        self.y = newY
-        self.isAirborne = true
-    else
+    elseif self:checkYCollision(newY, other) then
         -- Check for collision with the other fighter
         if isFalling then
             self.y = other.y - self.height -- Adjust position if colliding while falling
+            self.dy = 0
+            self.isAirborne = false
         else
-            self.y = other.y + other.height -- Adjust position if colliding while rising
+            self.y = self.y -- Keep current position if rising
+            self.dy = 0
         end
-        self.dy = 0
-        if self.state == 'jump' and isAllowedToChangeState then
-            if self.id == 1 then
-                print('======> COLLISION WITH OTHER IFHGTER!')
-            end
-            self:setState('jump') -- Keep state as jump if conditions allow
+
+        -- Set state to idle (standing on top)
+        if isAllowedToChangeState then
+            self:setState('idle') -- Set state to idle if conditions allow
         end
+    else
+        -- Update position if no collision with the opponent
+        self.y = newY
+        self.isAirborne = true
     end
 
     -- Only allow initiating a jump if certain conditions are met
@@ -424,9 +402,10 @@ function Fighter:handleJumping(dt, other)
 end
 
 function Fighter:checkYCollision(newY, other)
-    return not (self.x + self.width <= other.x or self.x >= other.x + other.width or newY + self.height <= other.y or
-        newY >= other.y + other.height)
+    return not (self.x + self.width <= other.x or self.x >= other.x + other.width or newY + self.height < other.y or
+        newY > other.y + other.height)
 end
+
 
 function Fighter:handleAttacks()
     if self.state == 'attacking' or self.state == 'hit' or self.isRecovering then
@@ -519,6 +498,17 @@ end
 function Fighter:resolveClash(other)
     local currentTime = love.timer.getTime()
 
+    -- Both fighters lose stamina during clash
+    self.stamina = math.max(self.stamina - 10, 0)
+    other.stamina = math.max(other.stamina - 10, 0)
+
+    -- If both fighters have no stamina, no clash happens
+    if self.stamina == 0 and other.stamina == 0 then
+        self.isClashing = false
+        other.isClashing = false
+        return
+    end
+
     if self.attackType == other.attackType then
         -- Both attacks are of the same type, both fighters are knocked back
         self:applyKnockback()
@@ -532,11 +522,13 @@ function Fighter:resolveClash(other)
         local myAttackWeight = self:getAttackWeight(self.attackType)
         local opponentAttackWeight = self:getAttackWeight(other.attackType)
 
-        if myAttackWeight > opponentAttackWeight then
+        -- However if one of the fighters has no stamina, the other wins
+        if myAttackWeight > opponentAttackWeight or other.stamina == 0 then
             self:winClash(other)
-        else
+        elseif opponentAttackWeight > myAttackWeight or self.stamina == 0 then
             other:winClash(self)
         end
+
         self.isClashing = true
         other.isClashing = true
         self.clashTime = currentTime
@@ -554,9 +546,19 @@ function Fighter:getAttackWeight(attackType)
 end
 
 function Fighter:applyKnockback()
+    local baseKnockbackDelay = self.knockbackDelay
+    local attackType = self.attackType or 'light'
+
+    -- Adjust knockback delay based on the attack type
+    if attackType == 'medium' then
+        baseKnockbackDelay = baseKnockbackDelay + 0.2
+    elseif attackType == 'heavy' then
+        baseKnockbackDelay = baseKnockbackDelay + 0.4
+    end
+
     self.knockbackTargetX = self.x + (self.direction * -100) -- Set the target position for knockback
     self.knockbackActive = false -- Knockback will be active after delay
-    self.knockbackDelayTimer = self.knockbackDelay -- Set the delay timer
+    self.knockbackDelayTimer = baseKnockbackDelay -- Set the delay timer
 end
 
 function Fighter:winClash(loser)
