@@ -70,11 +70,11 @@ function Game:update(dt)
 
     -- Check for collisions and apply damage
     if self.fighter1:isHit(self.fighter2) then
-        local hitbox = self.fighter2:getHitbox()
+        local hitbox = self.fighter2:getAttackHitbox()
         self.fighter1:takeDamage(hitbox.damage)
     end
     if self.fighter2:isHit(self.fighter1) then
-        local hitbox = self.fighter1:getHitbox()
+        local hitbox = self.fighter1:getAttackHitbox()
         self.fighter2:takeDamage(hitbox.damage)
     end
 

@@ -1,9 +1,20 @@
-local Anim8 = require 'lib.anim8'
+local Anim8 = require "lib.anim8"
 
 local Class, love, SoundManager = _G.Class, _G.love, _G.SoundManager
 local Fighter = Class:extend()
 
-function Fighter:init(id, isAI, name, startingX, startingY, scale, controls, traits, hitboxes, spriteConfig, soundFXConfig)
+function Fighter:init(
+    id,
+    isAI,
+    name,
+    startingX,
+    startingY,
+    scale,
+    controls,
+    traits,
+    hitboxes,
+    spriteConfig,
+    soundFXConfig)
     -- Character Properties
     self.id = id
     self.name = name
@@ -26,7 +37,7 @@ function Fighter:init(id, isAI, name, startingX, startingY, scale, controls, tra
     -- Character State
     self.dy = 0
     self.direction = (id == 2) and -1 or 1 -- Set direction to right for player 1 and left for player 2
-    self.state = 'idle'
+    self.state = "idle"
     self.isBlocking = false
     self.isBlockingDamage = false
     self.isAirborne = false
@@ -51,8 +62,9 @@ function Fighter:init(id, isAI, name, startingX, startingY, scale, controls, tra
     self.knockbackTargetX = self.x
     self.knockbackSpeed = 400
     self.knockbackActive = false
-    self.knockbackDelay = 0.5
+    self.knockbackDelay = 0.3
     self.knockbackDelayTimer = 0
+    self.lostClash = false
     -- Character State: hit
     self.hitEndTime = 0
     self.damageApplied = false
@@ -74,20 +86,22 @@ function Fighter:init(id, isAI, name, startingX, startingY, scale, controls, tra
 end
 
 function Fighter:validateFighterParameters()
-    assert(self.id, 'ID must be defined for fighter')
-    assert(self.name, 'Name must be defined for fighter')
-    assert(self.x, 'Starting X position must be defined for fighter')
-    assert(self.y, 'Starting Y position must be defined for fighter')
-    assert(self.scale, 'Scale must be defined for fighter')
-    assert(self.width, 'Width must be defined for fighter')
-    assert(self.height, 'Height must be defined for fighter')
-    assert(self.controls, 'Controls must be defined for fighter')
+    assert(self.id, "ID must be defined for fighter")
+    assert(self.name, "Name must be defined for fighter")
+    assert(self.x, "Starting X position must be defined for fighter")
+    assert(self.y, "Starting Y position must be defined for fighter")
+    assert(self.scale, "Scale must be defined for fighter")
+    assert(self.width, "Width must be defined for fighter")
+    assert(self.height, "Height must be defined for fighter")
+    assert(self.controls, "Controls must be defined for fighter")
 
     for attackType, hitbox in pairs(self.hitboxes) do
-        assert(hitbox.width, 'Width must be defined for hitbox: ' .. attackType)
-        assert(hitbox.height, 'Height must be defined for hitbox: ' .. attackType)
-        assert(hitbox.recovery, 'Recovery time must be defined for hitbox: ' .. attackType)
-        assert(hitbox.damage, 'Damage must be defined for hitbox: ' .. attackType)
+        assert(hitbox.ox, "Offset Y must be defined for hitbox: " .. attackType)
+        assert(hitbox.oy, "Offset X must be defined for hitbox: " .. attackType)
+        assert(hitbox.width, "Width must be defined for hitbox: " .. attackType)
+        assert(hitbox.height, "Height must be defined for hitbox: " .. attackType)
+        assert(hitbox.recovery, "Recovery time must be defined for hitbox: " .. attackType)
+        assert(hitbox.damage, "Damage must be defined for hitbox: " .. attackType)
     end
 end
 
@@ -97,13 +111,13 @@ function Fighter:loadSpritesheets(configs)
     for key, config in pairs(configs) do
         spritesheets[key] = love.graphics.newImage(config.path)
         print(
-            'Loaded spritesheet for',
+            "Loaded spritesheet for",
             key,
-            'from',
+            "from",
             config.path,
-            'with frame count:',
+            "with frame count:",
             config.frames,
-            'and dimensions:',
+            "and dimensions:",
             spritesheets[key]:getDimensions()
         )
     end
@@ -150,15 +164,15 @@ end
 
 function Fighter:createAnimation(image, frameWidth, frameHeight, frameCount, frameDuration)
     if not image then
-        print('Error: Image for animation is nil')
+        print("Error: Image for animation is nil")
         return nil
     end
     local grid = Anim8.newGrid(frameWidth, frameHeight, image:getWidth(), image:getHeight())
-    return Anim8.newAnimation(grid('1-' .. frameCount, 1), frameDuration)
+    return Anim8.newAnimation(grid("1-" .. frameCount, 1), frameDuration)
 end
 
 function Fighter:update(dt, other)
-    if self.state ~= 'death' then
+    if self.state ~= "death" then
         -- Handle all actions except death
         self:updateActions(dt, other)
         -- Update the state of the fighter after handling actions
@@ -185,12 +199,12 @@ end
 
 function Fighter:updateState(dt, other)
     local currentTime = love.timer.getTime()
-    local isAttacking = self.state == 'attacking'
-    local isHit = self.state == 'hit'
+    local isAttacking = self.state == "attacking"
+    local isHit = self.state == "hit"
     local isRecoveryPeriodOver = currentTime >= self.recoveryEndTime
     local isAttackPeriodOver = currentTime >= self.attackEndTime
     local isHitPeriodOver = currentTime >= self.hitEndTime
-    local isIdle = self.state == 'idle'
+    local isIdle = self.state == "idle"
 
     -- Check for clash
     if not self.isClashing then
@@ -206,9 +220,9 @@ function Fighter:updateState(dt, other)
     if isAttacking and isAttackPeriodOver then
         self.attackType = nil
         if self.isAirborne then
-            self:setState('jump')
+            self:setState("jump")
         else
-            self:setState('idle')
+            self:setState("idle")
         end
 
         if not self.isRecovering then
@@ -223,7 +237,7 @@ function Fighter:updateState(dt, other)
 
     -- Transition from hit to idle if the hit period has ended
     if isHit and isHitPeriodOver then
-        self:setState('idle')
+        self:setState("idle")
     end
 
     -- Recover stamina if the fighter is idle
@@ -233,7 +247,7 @@ function Fighter:updateState(dt, other)
 end
 
 function Fighter:handleMovement(dt, other)
-    if self.state == 'attacking' or self.state == 'hit' or self.isClashing or self.knockbackActive then
+    if self.state == "attacking" or self.state == "hit" or self.isClashing or self.knockbackActive then
         return
     end
 
@@ -284,7 +298,7 @@ function Fighter:handleMovement(dt, other)
         if not self:checkXCollision(newX, self.y, other) then
             self.x = newX
             if not self.isAirborne then
-                self:setState('run')
+                self:setState("run")
             end
         end
     elseif love.keyboard.isDown(self.controls.right) then
@@ -296,11 +310,11 @@ function Fighter:handleMovement(dt, other)
         if not self:checkXCollision(newX, self.y, other) then
             self.x = newX
             if not self.isAirborne then
-                self:setState('run')
+                self:setState("run")
             end
         end
     elseif not self.isAirborne then
-        self:setState('idle') -- Set state to idle if no movement keys are pressed
+        self:setState("idle") -- Set state to idle if no movement keys are pressed
     end
 
     self.isBlocking = self.direction == other.direction
@@ -321,7 +335,7 @@ function Fighter:startDash(direction)
 end
 
 function Fighter:recoverStamina(dt)
-    if self.state == 'idle' and self.stamina < self.maxStamina then
+    if self.state == "idle" and self.stamina < self.maxStamina then
         self.stamina = self.stamina + self.dashStaminaCost * dt
         if self.stamina > self.maxStamina then
             self.stamina = self.maxStamina
@@ -340,8 +354,8 @@ function Fighter:handleJumping(dt, other)
     local skyLevel = 0 -- Define the top level (skybox)
 
     -- Boolean flags for readability
-    local isAttacking = self.state == 'attacking'
-    local isHit = self.state == 'hit'
+    local isAttacking = self.state == "attacking"
+    local isHit = self.state == "hit"
     local isRecovering = self.isRecovering
     local isClashing = self.isClashing
     local isAirborne = self.isAirborne
@@ -364,9 +378,9 @@ function Fighter:handleJumping(dt, other)
         self.dy = 0
         if isAllowedToChangeState then
             if not love.keyboard.isDown(self.controls.left) and not love.keyboard.isDown(self.controls.right) then
-                self:setState('idle') -- Set state to idle if no movement keys are pressed
+                self:setState("idle") -- Set state to idle if no movement keys are pressed
             elseif isFalling then
-                self:setState('jump') -- Set state to jump if the fighter is falling
+                self:setState("jump") -- Set state to jump if the fighter is falling
             end
         end
     elseif newY <= skyLevel then
@@ -386,7 +400,7 @@ function Fighter:handleJumping(dt, other)
 
         -- Set state to idle (standing on top)
         if isAllowedToChangeState then
-            self:setState('idle') -- Set state to idle if conditions allow
+            self:setState("idle") -- Set state to idle if conditions allow
         end
     else
         -- Update position if no collision with the opponent
@@ -398,7 +412,7 @@ function Fighter:handleJumping(dt, other)
     if isAllowedToJump and love.keyboard.wasPressed(self.controls.jump) then
         self.dy = self.jumpStrength
         self.isAirborne = true
-        self:setState('jump')
+        self:setState("jump")
         -- Play jump sound
         SoundManager:playSound(self.sounds.jump)
     end
@@ -409,23 +423,22 @@ function Fighter:checkYCollision(newY, other)
         newY > other.y + other.height)
 end
 
-
 function Fighter:handleAttacks()
-    if self.state == 'attacking' or self.state == 'hit' or self.isRecovering then
+    if self.state == "attacking" or self.state == "hit" or self.isRecovering then
         return -- Prevent new attacks from starting if already attacking or recovering or hit
     end
 
     if love.keyboard.wasPressed(self.controls.light) then
-        self:startAttack('light')
+        self:startAttack("light")
     elseif love.keyboard.wasPressed(self.controls.medium) then
-        self:startAttack('medium')
+        self:startAttack("medium")
     elseif love.keyboard.wasPressed(self.controls.heavy) then
-        self:startAttack('heavy')
+        self:startAttack("heavy")
     end
 end
 
 function Fighter:startAttack(attackType)
-    self.state = 'attacking' -- Don't use self.setState() here
+    self.state = "attacking" -- Don't use self.setState() here
     self.attackType = attackType
     self.lastAttackType = attackType
     self.damageApplied = false
@@ -446,7 +459,7 @@ end
 
 function Fighter:startRecovery()
     if _G.isDebug then
-        print('Recovery started for', self.id, self.attackType, self.lastAttackType)
+        print("Recovery started for", self.id, self.attackType, self.lastAttackType)
     end
     self.recoveryEndTime = love.timer.getTime() + self.hitboxes[self.lastAttackType].recovery
     self.isRecovering = true
@@ -454,15 +467,15 @@ end
 
 function Fighter:endRecovery()
     if _G.isDebug then
-        print('Recovery ended for', self.id)
+        print("Recovery ended for", self.id)
     end
     self.isRecovering = false
 end
 
 function Fighter:checkForClash(other)
-    if self.state == 'attacking' and other.state == 'attacking' and not self.isRecovering and not other.isRecovering then
-        local myHitbox = self:getHitbox()
-        local opponentHitbox = other:getHitbox()
+    if self.state == "attacking" and other.state == "attacking" and not self.isRecovering and not other.isRecovering then
+        local myHitbox = self:getAttackHitbox()
+        local opponentHitbox = other:getAttackHitbox()
         if self:checkHitboxOverlap(myHitbox, opponentHitbox) then
             self:resolveClash(other)
         end
@@ -470,6 +483,8 @@ function Fighter:checkForClash(other)
 end
 
 function Fighter:checkForKnockback(dt)
+    local windowWidth = love.graphics.getWidth()
+
     if self.knockbackDelayTimer > 0 then
         self.knockbackDelayTimer = self.knockbackDelayTimer - dt
         if self.knockbackDelayTimer <= 0 then
@@ -481,16 +496,32 @@ function Fighter:checkForKnockback(dt)
     if self.knockbackActive then
         if math.abs(self.x - self.knockbackTargetX) < 1 then
             self.knockbackActive = false -- Stop knockback when close to target
+            self.isClashing = false
+
+            -- Apply pending damage after knockback
+            if self.pendingDamage and self.knockbackApplied then
+                self:takeDamage(self.pendingDamage)
+                self.pendingDamage = nil
+                self.knockbackApplied = false
+            end
         else
             local knockbackStep = self.knockbackSpeed * dt * self.direction * -1 -- Move in the opposite direction
-            if math.abs(knockbackStep) > math.abs(self.knockbackTargetX - self.x) then
-                self.x = self.knockbackTargetX -- Directly set to target if overshoot
+            local newX = self.x + knockbackStep
+
+            -- Ensure the new position is within bounds
+            if newX < 0 then
+                self.x = 0
+                self.knockbackActive = false -- Stop knockback at the boundary
+            elseif newX + self.width > windowWidth then
+                self.x = windowWidth - self.width
+                self.knockbackActive = false -- Stop knockback at the boundary
             else
-                self.x = self.x + knockbackStep -- Move incrementally towards target
+                self.x = newX -- Move incrementally towards target
             end
         end
     end
 end
+
 
 function Fighter:checkHitboxOverlap(hitbox1, hitbox2)
     return hitbox1.x < hitbox2.x + hitbox2.width and hitbox1.x + hitbox1.width > hitbox2.x and
@@ -508,7 +539,8 @@ function Fighter:resolveClash(other)
     -- If both fighters have no stamina, no clash happens
     if self.stamina == 0 and other.stamina == 0 then
         self.isClashing = false
-        other.isClashing = false
+        self.lostClash = false
+        other.lostClash = false
         return
     end
 
@@ -520,16 +552,21 @@ function Fighter:resolveClash(other)
         other.isClashing = true
         self.clashTime = currentTime
         other.clashTime = currentTime
+        self.lostClash = false
+        other.lostClash = false
     else
         -- Different attack types, the heavier one wins
         local myAttackWeight = self:getAttackWeight(self.attackType)
         local opponentAttackWeight = self:getAttackWeight(other.attackType)
 
-        -- However if one of the fighters has no stamina, the other wins
         if myAttackWeight > opponentAttackWeight or other.stamina == 0 then
             self:winClash(other)
+            self.lostClash = false
+            other.lostClash = true
         elseif opponentAttackWeight > myAttackWeight or self.stamina == 0 then
             other:winClash(self)
+            self.lostClash = true
+            other.lostClash = false
         end
 
         self.isClashing = true
@@ -550,25 +587,26 @@ end
 
 function Fighter:applyKnockback()
     local baseKnockbackDelay = self.knockbackDelay
-    local attackType = self.attackType or 'light'
+    local attackType = self.attackType or "light"
 
     -- Adjust knockback delay based on the attack type
-    if attackType == 'medium' then
+    if attackType == "medium" then
         baseKnockbackDelay = baseKnockbackDelay + 0.2
-    elseif attackType == 'heavy' then
+    elseif attackType == "heavy" then
         baseKnockbackDelay = baseKnockbackDelay + 0.4
     end
 
     self.knockbackTargetX = self.x + (self.direction * -100) -- Set the target position for knockback
     self.knockbackActive = false -- Knockback will be active after delay
     self.knockbackDelayTimer = baseKnockbackDelay -- Set the delay timer
+    self.lostClash = false -- Reset lost clash flag
 end
 
 function Fighter:winClash(loser)
-    loser:takeDamage(self.hitboxes[loser.attackType].damage / 2) -- Half damage
-    loser:applyKnockback()
-    loser:setState('idle')
-    self:setState('idle')
+    -- Instead of applying damage immediately, set a flag to apply it later
+    loser.pendingDamage = self.hitboxes[loser.attackType].damage / 2
+    loser.knockbackApplied = true
+    loser:applyKnockback(loser)
 end
 
 function Fighter:setState(newState)
@@ -585,136 +623,143 @@ function Fighter:setState(newState)
 end
 
 function Fighter:render(other)
-    -- Sprite config list includes states and attack types as key for animations
-    -- self.attackType gets cleared on recovery start
-    local spriteName = self.state == 'attacking' and self.lastAttackType or self.state
+    self:drawSprite()
+    if _G.isDebug then
+        self:drawHitboxes(other)
+    end
+    self:drawBlockingText()
+    self:drawClashText(other)
+end
+
+function Fighter:drawSprite()
+    local spriteName = self.state == "attacking" and self.lastAttackType or self.state
     local sprite = self.spritesheets[spriteName] or self.spritesheets.idle
 
-    if _G.isDebug and self.id == 1 then
-        print(
-            '[Fighter ' .. self.id .. ']:',
-            spriteName,
-            'x',
-            self.x,
-            'y',
-            self.y,
-            'state:',
-            self.state,
-            'attackType:',
-            self.attackType,
-            'isRecovering:',
-            self.isRecovering,
-            'isClashing:',
-            self.isClashing,
-            'isKnockbackActive:',
-            self.knockbackActive
-        )
-    end
-
     if self.currentAnimation then
-        -- Frame dimensions
-        local frameWidth = self.currentAnimation:getDimensions()
-        local frameHeight = self.currentAnimation:getDimensions()
-
-        -- Adjust these values to change the size of the sprite
+        local frameWidth, frameHeight = self.currentAnimation:getDimensions()
         local scaleX = self.scale.x * self.direction
         local scaleY = self.scale.y
-
-        -- Ensure the sprite is centered within the rectangle
         local offsetX = (self.width - (frameWidth * scaleX)) / 2
         local offsetY = (self.height - (frameHeight * scaleY)) / 2
-
-        -- Draw the animation with scaling and positioning adjustments
         local angle = 0
         local posX = self.x + offsetX + (self.scale.ox * self.direction)
         local posY = self.y + offsetY + self.scale.oy
+
+        -- Draw the current animation
         self.currentAnimation:draw(sprite, posX, posY, angle, scaleX, scaleY)
 
+        -- Debug information
         if _G.isDebug and self.id == 1 then
             print(self.scale.ox, self.scale.oy, posX, posY)
-            print('[Sprite]:', posX, posY, '<- pos, scale ->', scaleX, scaleY)
+            print("[Sprite]:", posX, posY, "<- pos, scale ->", scaleX, scaleY)
         end
     else
-        print('Error: No current animation to draw for state:', self.state)
+        print("Error: No current animation to draw for state:", self.state)
+    end
+end
+
+function Fighter:drawHitboxes(other)
+    -- Draw Fighter hitbox
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
+    love.graphics.setColor(1, 0, 0, 1) -- Red color for the debug dot
+    love.graphics.circle("fill", self.x, self.y, 5) -- Draw a small circle (dot) at (self.x, self.y)
+    love.graphics.setColor(1, 1, 1, 1) -- Reset color
+
+    -- Draw Fighter attack hitbox
+    if self.state == "attacking" and self.attackType then
+        local hitbox = self:getAttackHitbox()
+        local currentTime = love.timer.getTime()
+        if currentTime <= self.attackEndTime then
+            love.graphics.setColor(1, 0, 0, 1)
+            love.graphics.rectangle("line", hitbox.x, hitbox.y, hitbox.width, hitbox.height)
+            love.graphics.setColor(1, 1, 1, 1) -- Reset color
+        end
     end
 
-    -- Draw debug rectangle with dot
-    -- Characters are really just a rectangle and the sprite gets centered inside it
-    if _G.isDebug then
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.rectangle('line', self.x, self.y, self.width, self.height)
-        love.graphics.setColor(1, 0, 0, 1) -- Red color for the debug dot
-        love.graphics.circle('fill', self.x, self.y, 5) -- Draw a small circle (dot) at (self.x, self.y)
-        love.graphics.setColor(1, 1, 1, 1) -- Reset color
+    -- Draw Opponent hitbox
+    if self.id == 1 then
+        print(
+            "[Fighter " .. self.id .. "]:",
+            self.state,
+            "x",
+            self.x,
+            "y",
+            self.y,
+            "state:",
+            self.state,
+            "attackType:",
+            self.attackType,
+            "isRecovering:",
+            self.isRecovering,
+            "isClashing:",
+            self.isClashing,
+            "isKnockbackActive:",
+            self.knockbackActive
+        )
     end
+end
 
-    if self.state == 'attacking' and self.attackType and _G.isDebug then
-        self:renderHitbox()
-    end
-
-    -- Draw blocking text
+function Fighter:drawBlockingText()
     if self.isBlockingDamage then
         love.graphics.setFont(self.eventFont)
         love.graphics.setColor(1, 1, 0, 1)
-        love.graphics.print('Blocked!', self.x - 14, self.y - 20)
+        love.graphics.print("Blocked!", self.x - 16, self.y - 22)
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
+end
 
-    -- Draw clashing
+function Fighter:drawClashText(other)
     local currentTime = love.timer.getTime()
-    if self.isClashing and currentTime - self.clashTime < 1 then -- Display for 1 second
+    local displayTime = 1 -- Display for 1 seconds
+    if self.isClashing and currentTime - self.clashTime < displayTime then 
+        -- Draw "Clash!" between the two fighters
         love.graphics.setFont(self.eventFont)
         love.graphics.setColor(1, 1, 0, 1)
         local clashX = (self.x + other.x) / 2
         local clashY = math.min(self.y, other.y) - 20
-        love.graphics.printf('Clash!', clashX - 50, clashY, 100, 'center')
+        love.graphics.printf("Clash!", clashX - 50, clashY, 100, "center")
+
+        -- Draw "LOST" over the losing player
+        if self.lostClash then
+            love.graphics.setColor(1, 0, 0, 1)
+            love.graphics.printf("Lost", self.x - 28, self.y - 25, 100, "center")
+        elseif other.lostClash then
+            love.graphics.setColor(1, 0, 0, 1)
+            love.graphics.printf("Lost", other.x - 28, other.y - 25, 100, "center")
+        end
+
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     else
         self.isClashing = false
     end
 end
 
-function Fighter:getHitbox()
+
+function Fighter:getAttackHitbox()
     local hitbox = self.hitboxes[self.attackType]
     if not hitbox then
         return nil
     end
-    local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
+    local hitboxX =
+        self.direction == 1 and (self.x + self.width + (hitbox.ox or 0)) or (self.x - hitbox.width + (hitbox.ox or 0))
     return {
         x = hitboxX,
-        y = self.y + (self.height - hitbox.height) / 2,
+        y = self.y + (self.height - hitbox.height) / 2 + (hitbox.oy or 0),
         width = hitbox.width,
         height = hitbox.height,
         damage = hitbox.damage
     }
 end
 
-function Fighter:renderHitbox()
-    local hitbox = self.hitboxes[self.attackType]
-    local currentTime = love.timer.getTime()
-
-    if currentTime <= self.attackEndTime then
-        love.graphics.setColor(1, 0, 0, 1)
-        local hitboxX = self.direction == 1 and (self.x + self.width) or (self.x - hitbox.width)
-        love.graphics.rectangle(
-            'line',
-            hitboxX,
-            self.y + (self.height - hitbox.height) / 2,
-            hitbox.width,
-            hitbox.height
-        )
-        love.graphics.setColor(1, 1, 1, 1) -- Reset color
-    end
-end
-
 function Fighter:isHit(other)
     self.isBlockingDamage = false
 
-    if other.state ~= 'attacking' then
+    if other.state ~= "attacking" then
         return false
     end
 
-    local hitbox = other:getHitbox()
+    local hitbox = other:getAttackHitbox()
     if hitbox and not other.damageApplied then
         if
             hitbox.x < self.x + self.width and hitbox.x + hitbox.width > self.x and hitbox.y < self.y + self.height and
@@ -738,7 +783,7 @@ function Fighter:takeDamage(damage)
     if self.health <= 0 then
         -- Dead
         self.health = 0
-        self:setState('death')
+        self:setState("death")
 
         -- Play death animation
         self.currentAnimation = self.animations.death
@@ -750,7 +795,7 @@ function Fighter:takeDamage(damage)
         -- Set the start time for the death animation
         self.deathAnimationStartTime = love.timer.getTime()
     else
-        self:setState('hit')
+        self:setState("hit")
 
         -- Play hit animation
         self.currentAnimation = self.animations.hit
@@ -766,7 +811,7 @@ function Fighter:takeDamage(damage)
 end
 
 function Fighter:checkDeathAnimationFinished()
-    if self.state == 'death' then
+    if self.state == "death" then
         local currentTime = love.timer.getTime()
         local elapsedTime = currentTime - self.deathAnimationStartTime
         local deathDuration = self.currentAnimation.totalDuration
