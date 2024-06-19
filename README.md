@@ -6,6 +6,16 @@ A tiny Love2D fighting game.
 
 ![alt text](.github/image_game.png)
 
+#### Controller Support?
+
+Sure, https://www.rewasd.com/
+
+Keymaps in `keymap.lua`
+
+#### Multiplayer?
+
+Sure, https://moonlight-stream.org/
+
 ## Run
 
 ```sh
@@ -26,9 +36,6 @@ I do not own any of the assets used in this game.
 
 ## TODO:
 
-- Improve clash timing and add stamina consideration
-- Attack duration calculations might be causing some issues
-- Anim8 per frame helping?
 - Fix death animation and sound
 - Fix basic AI and passing logic
 - Fix sprite scaling in character select

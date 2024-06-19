@@ -305,15 +305,18 @@ end
 
 function Fighter:startDash(direction)
     if self.id > 2 then
-        return -- ai doesn't dash
+        return -- ai doesn't dash :D
     end
     if self.stamina >= self.dashStaminaCost then
         self.isDashing = true
         self.direction = direction
         self.dashEndTime = love.timer.getTime() + self.dashDuration
         self.stamina = self.stamina - self.dashStaminaCost -- Consume stamina
-        -- play sound
-        SoundManager:playSound(self.sounds.dash)
+        -- We do this because two dashes can be made in quick succession
+        if self.sounds.dash then
+            local dashSound = self.sounds.dash:clone()
+            SoundManager:playSound(dashSound)
+        end
     end
 end
 

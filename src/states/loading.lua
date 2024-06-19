@@ -1,6 +1,7 @@
 local json = require 'lib.json'
 local table = require 'lib.table'
-local Fighter, love = _G.Fighter, _G.love
+
+local KeyMappings, Fighter, love = _G.KeyMappings, _G.Fighter, _G.love
 local Loading = {}
 
 function Loading:enter(params)
@@ -34,23 +35,6 @@ function Loading:loadFighters()
     -- TODO: Move to config
     local startPos1 = {100, 200}
     local startPos2 = {600, 200}
-    local fighter1Controls = {
-        left = 'a',
-        right = 'd',
-        jump = 'w',
-        lightAttack = 'e',
-        mediumAttack = 'r',
-        heavyAttack = 't'
-    }
-    local fighter2Controls = {
-        left = 'h',
-        right = 'k',
-        jump = 'u',
-        lightAttack = 'i',
-        mediumAttack = 'o',
-        heavyAttack = 'p'
-    }
-
     self.fighter1 =
         Fighter:new(
         1,
@@ -58,7 +42,7 @@ function Loading:loadFighters()
         startPos1[1],
         startPos1[2],
         fighter1Data.scale,
-        fighter1Controls,
+        KeyMappings.fighter1Controls,
         fighter1Data.traits,
         fighter1Data.hitboxes,
         fighter1Data.spriteConfig,
@@ -72,7 +56,7 @@ function Loading:loadFighters()
         startPos2[1],
         startPos2[2],
         fighter2Data.scale,
-        fighter2Controls,
+        KeyMappings.fighter2Controls,
         fighter2Data.traits,
         fighter2Data.hitboxes,
         fighter2Data.spriteConfig,

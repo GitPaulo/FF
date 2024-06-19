@@ -1,7 +1,8 @@
 -- Core
+_G.KeyMappings  = require 'keymap'
 _G.Class        = require 'lib.class'
-_G.SoundManager = require 'sound.soundmanager'
 _G.AIController = require 'ai.aicontroller'
+_G.SoundManager = require 'sound.soundmanager'
 -- Entities
 _G.Fighter = require 'entities.fighter'
 -- States
