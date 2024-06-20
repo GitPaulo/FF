@@ -56,13 +56,11 @@ function Fighter:init(
     self.dashStaminaCost = 25
     self.deathAnimationFinished = false
     -- Character State: clash
-    self.opponentAttackType = nil
-    self.opponentAttackEndTime = 0
     self.clashTime = 0
     self.knockbackTargetX = self.x
     self.knockbackSpeed = 400
     self.knockbackActive = false
-    self.knockbackDelay = 0.3
+    self.knockbackDelay = 0.2
     self.knockbackDelayTimer = 0
     self.lostClash = false
     -- Character State: hit
@@ -195,14 +193,9 @@ function Fighter:update(dt, other)
 end
 
 function Fighter:updateActions(dt, other)
-    -- Opponent
-    self.opponentAttackType = other.attackType
-    self.opponentAttackEndTime = other.attackEndTime
-
-    -- Self
     self:handleMovement(dt, other)
     self:handleJumping(dt, other)
-    self:handleAttacks()
+    self:handleAttacks(other)
 end
 
 function Fighter:updateState(dt, other)
@@ -231,10 +224,6 @@ function Fighter:updateState(dt, other)
             self:setState('jump')
         else
             self:setState('idle')
-        end
-
-        if not self.isRecovering then
-            self:startRecovery()
         end
     end
 
@@ -428,10 +417,6 @@ function Fighter:checkYCollision(newY, other)
 end
 
 function Fighter:handleAttacks()
-    if self.state == 'attacking' or self.state == 'hit' or self.isRecovering then
-        return -- Prevent new attacks from starting if already attacking or recovering or hit
-    end
-
     if love.keyboard.wasPressed(self.controls.light) then
         self:startAttack('light')
     elseif love.keyboard.wasPressed(self.controls.medium) then
@@ -442,6 +427,25 @@ function Fighter:handleAttacks()
 end
 
 function Fighter:startAttack(attackType)
+    if self.state == 'attacking' or self.state == 'hit' or self.isRecovering then
+        return -- Prevent new attacks from starting if already attacking or recovering or hit
+    end
+
+    -- Stamina
+    local mediumStaminaCost = 15
+    local heavyStaminaCost = 30
+    local staminaCost = 0
+    if attackType == 'medium' then
+        staminaCost = mediumStaminaCost
+    elseif attackType == 'heavy' then
+        staminaCost = heavyStaminaCost
+    end
+    if self.stamina < staminaCost then
+        return -- Prevent attack if not enough stamina
+    end
+    self.stamina = self.stamina - staminaCost -- Deduct stamina
+
+    -- Start attack state change
     self.state = 'attacking' -- Note: Don't use self.setState() here
     self.attackType = attackType
     self.lastAttackType = attackType
@@ -457,13 +461,16 @@ function Fighter:startAttack(attackType)
     -- Set the current animation to the attack animation
     self.currentAnimation = self.animations[attackType]
     self.currentAnimation:gotoFrame(1)
+
+    -- Start recovery
+    self:startRecovery(attackType)
 end
 
-function Fighter:startRecovery()
+function Fighter:startRecovery(attackType)
     if _G.isDebug then
-        print('Recovery started for', self.id, self.attackType, self.lastAttackType)
+        print('Recovery started for', self.id, 'attack', attackType)
     end
-    self.recoveryEndTime = love.timer.getTime() + self.hitboxes[self.lastAttackType].recovery
+    self.recoveryEndTime = love.timer.getTime() + self.hitboxes[attackType].recovery + 0.1 -- padding
     self.isRecovering = true
 end
 
@@ -475,7 +482,7 @@ function Fighter:endRecovery()
 end
 
 function Fighter:checkForClash(other)
-    if self.state == 'attacking' and other.state == 'attacking' and not self.isRecovering and not other.isRecovering then
+    if self.state == 'attacking' and other.state == 'attacking' then
         local myHitbox = self:getAttackHitbox()
         local opponentHitbox = other:getAttackHitbox()
         if self:checkHitboxOverlap(myHitbox, opponentHitbox) then
@@ -496,6 +503,7 @@ function Fighter:checkForKnockback(dt)
     end
 
     if self.knockbackActive then
+        -- Check if the fighter is close to the target position to stop
         if math.abs(self.x - self.knockbackTargetX) < 1 then
             self.knockbackActive = false -- Stop knockback when close to target
             self.isClashing = false
@@ -506,17 +514,15 @@ function Fighter:checkForKnockback(dt)
                 self.pendingDamage = nil
                 self.knockbackApplied = false
             end
-        else
+        else -- Move incrementally towards the target
             local knockbackStep = self.knockbackSpeed * dt * self.direction * -1 -- Move in the opposite direction
             local newX = self.x + knockbackStep
 
             -- Ensure the new position is within bounds
             if newX < 0 then
                 self.x = 0
-                self.knockbackActive = false -- Stop knockback at the boundary
             elseif newX + self.width > windowWidth then
                 self.x = windowWidth - self.width
-                self.knockbackActive = false -- Stop knockback at the boundary
             else
                 self.x = newX -- Move incrementally towards target
             end
@@ -545,8 +551,12 @@ function Fighter:resolveClash(other)
         return
     end
 
-    if self.attackType == other.attackType then
-        -- Both attacks are of the same type, both fighters are knocked back
+    -- Compare attack types and determine the winner
+    local myAttackWeight = self:getAttackWeight(self.attackType)
+    local opponentAttackWeight = self:getAttackWeight(other.attackType)
+
+    if myAttackWeight == opponentAttackWeight then
+        -- Both attacks are of the same weight, both fighters are knocked back
         self:applyKnockback()
         other:applyKnockback()
         self.isClashing = true
@@ -557,9 +567,6 @@ function Fighter:resolveClash(other)
         other.lostClash = false
     else
         -- Different attack types, the heavier one wins
-        local myAttackWeight = self:getAttackWeight(self.attackType)
-        local opponentAttackWeight = self:getAttackWeight(other.attackType)
-
         if myAttackWeight > opponentAttackWeight or other.stamina == 0 then
             self:winClash(other)
             self.lostClash = false
@@ -607,7 +614,7 @@ function Fighter:winClash(loser)
     -- Instead of applying damage immediately, set a flag to apply it later
     loser.pendingDamage = self.hitboxes[loser.attackType].damage / 2
     loser.knockbackApplied = true
-    loser:applyKnockback(loser)
+    loser:applyKnockback()
 end
 
 function Fighter:setState(newState)
@@ -770,7 +777,7 @@ function Fighter:isHit(other)
             if self.isBlocking then
                 self.isBlockingDamage = true
                 -- Play block sound effect if available
-                SoundManager:playSound(self.sounds.block)
+                SoundManager:playSound(self.sounds.block, {clone = true})
                 return false
             end
             other.damageApplied = true -- Mark damage as applied

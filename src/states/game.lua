@@ -1,4 +1,4 @@
-local love, AIController = _G.love, _G.AIController
+local love, SoundManager, AIController = _G.love, _G.SoundManager, _G.AIController
 local Game = {}
 
 local SPRITE_WIDTH = 800
@@ -44,8 +44,8 @@ function Game:enter(params)
     self.winnerFont = love.graphics.newFont(20)
     self.instructionsFont = love.graphics.newFont(16)
 
-    -- Load clash sound effect
-    self.clashSound = love.audio.newSource('assets/clash.mp3', 'static')
+    -- Load sound clash
+    self.clashSound = SoundManager:loadSound('assets/clash.mp3')
 end
 
 function Game:exit()
@@ -88,8 +88,8 @@ function Game:update(dt)
     end
 
     -- Check for clash
-    if self.fighter1.isClashing and self.fighter2.isClashing and not self.clashSound:isPlaying() then
-        love.audio.play(self.clashSound)
+    if self.fighter1.isClashing and self.fighter2.isClashing then
+        SoundManager:playSound(self.clashSound, {clone = true})
     end
 
     -- Check for game over - leave this block last
@@ -129,14 +129,14 @@ function Game:render()
     self.fighter2:render(self.fighter1)
 
     -- Render health bars
-    self:renderHealthBars()
+    self:drawHealthBars()
 
     -- Render FFT visualizer
-    self:renderFFT()
+    self:drawFFT()
 
     -- Render recovery progress bars
-    self:renderRecoveryProgressBar(self.fighter1)
-    self:renderRecoveryProgressBar(self.fighter2)
+    self:drawRecoveryBar(self.fighter1)
+    self:drawRecoveryBar(self.fighter2)
 
     -- Render game over screen if game is over
     if self.gameOver then
@@ -163,14 +163,14 @@ function Game:render()
     end
 end
 
-function Game:renderRecoveryProgressBar(fighter)
+function Game:drawRecoveryBar(fighter)
     local currentTime = love.timer.getTime()
     local recoveryDuration =
         fighter.hitboxes[fighter.lastAttackType] and fighter.hitboxes[fighter.lastAttackType].recovery or 0
     local elapsedTime = currentTime - (fighter.recoveryEndTime - recoveryDuration)
     local progress = math.min(elapsedTime / recoveryDuration, 1) -- Ensure progress doesn't exceed 1
 
-    local barWidth = 60 -- Half the width
+    local barWidth = 44 -- Full width of the bar
     local barHeight = 4
     local x = fighter.id == 1 and 10 or love.graphics.getWidth() - 10 - barWidth
     local y = 45 -- Position just under the stamina bar
@@ -201,7 +201,7 @@ function Game:buildBackground()
     love.window.setMode(SPRITE_WIDTH, SPRITE_HEIGHT)
 end
 
-function Game:renderHealthBars()
+function Game:drawHealthBars()
     local barWidth = 300
     local barHeight = 20
     local padding = 10
@@ -253,7 +253,7 @@ function Game:renderHealthBars()
     love.graphics.setColor(1, 1, 1, 1) -- Reset color
 end
 
-function Game:renderFFT()
+function Game:drawFFT()
     local centerX = SPRITE_WIDTH / 2
     local centerY = 40
     local fftData = self.fftData[self.fftDataIndex]
