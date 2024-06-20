@@ -5,7 +5,7 @@ return {
     hitboxes = {
         light = {ox = 0, oy = 0, width = 95, height = 100, recovery = 0.2, damage = 5},
         medium = {ox = 0, oy = 0, width = 100, height = 25, recovery = 0.4, damage = 10},
-        heavy = {ox = 0, oy = 0, width = 100, height = 25, recovery = 0.6, damage = 15}
+        heavy = {ox = 0, oy = 0, width = 100, height = 25, recovery = 0.8, damage = 15}
     },
     spriteConfig = {
         idle = {

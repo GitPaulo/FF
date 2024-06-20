@@ -513,8 +513,6 @@ function Fighter:checkForClash(other)
         return
     end
 
-    print('CLASHING!')
-
     local myHitbox = self:getAttackHitbox()
     local opponentHitbox = other:getAttackHitbox()
     -- Check if the hitboxes overlap
