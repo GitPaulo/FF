@@ -430,11 +430,11 @@ function Fighter:handleAttacks()
 end
 
 function Fighter:handleDamage(other)
+    self.isBlockingDamage = false
+
     if other.state ~= 'attacking' or not self:isHit(other) then
         return
     end
-
-    self.isBlockingDamage = false
 
     if self.isBlocking then
         self.isBlockingDamage = true
@@ -751,7 +751,7 @@ function Fighter:drawBlockingText()
     if self.isBlockingDamage then
         love.graphics.setFont(self.eventFont)
         love.graphics.setColor(1, 1, 0, 1)
-        love.graphics.print('Blocked!', self.x - 16, self.y - 22)
+        love.graphics.print('Blocked!', self.x - 18, self.y - 22)
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
     end
 end
