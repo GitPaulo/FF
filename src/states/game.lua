@@ -43,9 +43,6 @@ function Game:enter(params)
     self.gameOverFont = love.graphics.newFont(32)
     self.winnerFont = love.graphics.newFont(20)
     self.instructionsFont = love.graphics.newFont(16)
-
-    -- Load sound clash
-    self.clashSound = SoundManager:loadSound('assets/clash.mp3')
 end
 
 function Game:exit()
@@ -85,11 +82,6 @@ function Game:update(dt)
     if self.fighter2:isHit(self.fighter1) then
         local hitbox = self.fighter1:getAttackHitbox()
         self.fighter2:takeDamage(hitbox.damage)
-    end
-
-    -- Check for clash
-    if self.fighter1.isClashing and self.fighter2.isClashing then
-        SoundManager:playSound(self.clashSound, {clone = true})
     end
 
     -- Check for game over - leave this block last

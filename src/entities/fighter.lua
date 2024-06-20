@@ -74,7 +74,7 @@ function Fighter:init(
     self.spritesheets = self:loadSpritesheets(spriteConfig)
     self.animations = self:loadAnimations(spriteConfig)
     self.animationDurations = self:loadAnimationDurations(spriteConfig)
-    self.sounds = self:loadSoundFX(soundFXConfig)
+    self.sounds = self:loadSoundFX(soundFXConfig) -- Fighter related sound effects
 
     -- Set the default animation to idle
     self.currentAnimation = self.animations.idle
@@ -157,6 +157,8 @@ function Fighter:loadSoundFX(configs)
     for key, filePath in pairs(configs) do
         sounds[key] = SoundManager:loadSound(filePath)
     end
+    -- add clash
+    sounds['clash'] = SoundManager:loadSound('assets/clash.mp3')
     return sounds
 end
 
@@ -502,7 +504,7 @@ function Fighter:checkForKnockback(dt)
         return
     end
 
-    if self.knockbackActive then
+    if self.knockbackActive and self.state ~= 'run' then
         -- Check if the fighter is close to the target position to stop
         if math.abs(self.x - self.knockbackTargetX) < 1 then
             self.knockbackActive = false -- Stop knockback when close to target
@@ -521,8 +523,12 @@ function Fighter:checkForKnockback(dt)
             -- Ensure the new position is within bounds
             if newX < 0 then
                 self.x = 0
+                self.knockbackActive = false -- Stop knockback when close to target
+                self.isClashing = false
             elseif newX + self.width > windowWidth then
                 self.x = windowWidth - self.width
+                self.knockbackActive = false -- Stop knockback when close to target
+                self.isClashing = false
             else
                 self.x = newX -- Move incrementally towards target
             end
@@ -608,6 +614,9 @@ function Fighter:applyKnockback()
     self.knockbackActive = false -- Knockback will be active after delay
     self.knockbackDelayTimer = baseKnockbackDelay -- Set the delay timer
     self.lostClash = false -- Reset lost clash flag
+
+    -- Play clash sound effect
+    SoundManager:playSound(self.sounds.clash, {clone = true})
 end
 
 function Fighter:winClash(loser)
