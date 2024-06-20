@@ -74,16 +74,6 @@ function Game:update(dt)
     self.fighter1:update(dt, self.fighter2)
     self.fighter2:update(dt, self.fighter1)
 
-    -- Check for collisions and apply damage
-    if self.fighter1:isHit(self.fighter2) then
-        local hitbox = self.fighter2:getAttackHitbox()
-        self.fighter1:takeDamage(hitbox.damage)
-    end
-    if self.fighter2:isHit(self.fighter1) then
-        local hitbox = self.fighter1:getAttackHitbox()
-        self.fighter2:takeDamage(hitbox.damage)
-    end
-
     -- Check for game over - leave this block last
     local hasFighterDied = self.fighter1.state == 'death' or self.fighter2.state == 'death'
     if hasFighterDied then

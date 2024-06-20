@@ -65,7 +65,7 @@ function Fighter:init(
     self.lostClash = false
     -- Character State: hit
     self.hitEndTime = 0
-    self.damageApplied = false
+    self.damageApplied = false -- ensures it only every applies once
     -- Other
     self.gravity = 1000
     self.isAI = isAI or false
@@ -198,6 +198,7 @@ function Fighter:updateActions(dt, other)
     self:handleMovement(dt, other)
     self:handleJumping(dt, other)
     self:handleAttacks(other)
+    self:handleDamage(other)
 end
 
 function Fighter:updateState(dt, other)
@@ -428,6 +429,28 @@ function Fighter:handleAttacks()
     end
 end
 
+function Fighter:handleDamage(other)
+    if other.state ~= 'attacking' or not self:isHit(other) then
+        return
+    end
+
+    self.isBlockingDamage = false
+
+    if self.isBlocking then
+        self.isBlockingDamage = true
+        -- Play block sound effect if available
+        SoundManager:playSound(self.sounds.block)
+    elseif not other.damageApplied then
+        local attackHitbox = other:getAttackHitbox()
+        if attackHitbox then
+            local attackDamage = attackHitbox.damage
+            self:takeDamage(attackDamage)
+            other.damageApplied = true -- Ensure damage is only applied once
+        end
+    end
+end
+
+
 function Fighter:startAttack(attackType)
     if self.state == 'attacking' or self.state == 'hit' or self.isRecovering then
         return -- Prevent new attacks from starting if already attacking or recovering or hit
@@ -451,7 +474,7 @@ function Fighter:startAttack(attackType)
     self.state = 'attacking' -- Note: Don't use self.setState() here
     self.attackType = attackType
     self.lastAttackType = attackType
-    self.damageApplied = false
+    self.damageApplied = false -- Reset damage applied for attacker (Important not to stack damage)
 
     -- Get the precomputed attack duration
     local attackDuration = self.animationDurations[attackType]
@@ -472,7 +495,7 @@ function Fighter:startRecovery(attackType)
     if _G.isDebug then
         print('Recovery started for', self.id, 'attack', attackType)
     end
-    self.recoveryEndTime = love.timer.getTime() + self.hitboxes[attackType].recovery + 0.1 -- padding
+    self.recoveryEndTime = love.timer.getTime() + self.hitboxes[attackType].recovery
     self.isRecovering = true
 end
 
@@ -484,12 +507,19 @@ function Fighter:endRecovery()
 end
 
 function Fighter:checkForClash(other)
-    if self.state == 'attacking' and other.state == 'attacking' then
-        local myHitbox = self:getAttackHitbox()
-        local opponentHitbox = other:getAttackHitbox()
-        if self:checkHitboxOverlap(myHitbox, opponentHitbox) then
-            self:resolveClash(other)
-        end
+    local isAllowedToClash =
+        self.state == 'attacking' and other.state == 'attacking' and not (self:isHit(other) or other:isHit(self))
+    if not isAllowedToClash then
+        return
+    end
+
+    print('CLASHING!')
+
+    local myHitbox = self:getAttackHitbox()
+    local opponentHitbox = other:getAttackHitbox()
+    -- Check if the hitboxes overlap
+    if self:checkHitboxOverlap(myHitbox, opponentHitbox) then
+        self:resolveClash(other)
     end
 end
 
@@ -755,12 +785,14 @@ function Fighter:drawClashText(other)
 end
 
 function Fighter:getAttackHitbox()
-    local hitbox = self.hitboxes[self.attackType]
-    if not hitbox then
+    if not self.attackType or not self.hitboxes[self.attackType] then
         return nil
     end
+
+    local hitbox = self.hitboxes[self.attackType]
     local hitboxX =
         self.direction == 1 and (self.x + self.width + (hitbox.ox or 0)) or (self.x - hitbox.width + (hitbox.ox or 0))
+
     return {
         x = hitboxX,
         y = self.y + (self.height - hitbox.height) / 2 + (hitbox.oy or 0),
@@ -771,25 +803,13 @@ function Fighter:getAttackHitbox()
 end
 
 function Fighter:isHit(other)
-    self.isBlockingDamage = false
-
-    if other.state ~= 'attacking' then
-        return false
-    end
-
+    -- Check if the hitbox overlaps with the fighter's hitbox
     local hitbox = other:getAttackHitbox()
     if hitbox and not other.damageApplied then
         if
             hitbox.x < self.x + self.width and hitbox.x + hitbox.width > self.x and hitbox.y < self.y + self.height and
                 hitbox.y + hitbox.height > self.y
          then
-            if self.isBlocking then
-                self.isBlockingDamage = true
-                -- Play block sound effect if available
-                SoundManager:playSound(self.sounds.block, {clone = true})
-                return false
-            end
-            other.damageApplied = true -- Mark damage as applied
             return true
         end
     end
