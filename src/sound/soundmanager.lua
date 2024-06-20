@@ -11,6 +11,11 @@ function SoundManager:playSound(sound, params)
     local repeatCount = params.repeatCount or 1
     local volume = params.volume or 1
     local pitch = params.pitch or 1
+    local cloneSound = params.clone or false
+
+    if cloneSound then
+        sound = sound:clone()
+    end
 
     if delay > 0 then
         self:scheduleSound(sound, delay, repeatCount, volume, pitch)

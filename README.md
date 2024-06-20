@@ -34,11 +34,10 @@ python fft/fft.py
 
 I do not own any of the assets used in this game.
 
-## TODO:
+## TODO
 
-- Fix death animation and sound
-- Fix basic AI and passing logic
-- Fix sprite scaling in character select
-- Countdown to fight and enter anims
-- Interact with rock (pray)
-- Entities?
+- [ ] Fix recovery or remove it all together, look at update state
+- [ ] Rock entity! Interact with rock (pray)?
+- [ ] Fix basic AI and settings passing logic
+- [ ] Fix sprite scaling in character select
+- [ ] Countdown to fight (maybe not explicit) and fighter enter anims?

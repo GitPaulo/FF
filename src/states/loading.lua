@@ -90,7 +90,7 @@ function Loading:update(dt)
         if not success then
             error(message)
         end
-        if coroutine.status(self.loadingCoroutine) == 'dead' then
+        if coroutine.status(self.loadingCoroutine) == 'death' then
             self.loadingCoroutine = nil
         end
     end

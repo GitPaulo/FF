@@ -59,6 +59,15 @@ function Game:update(dt)
 
     self.timer = self.timer + dt * SPEED
 
+    -- Update FFT data index
+    self.fftDataIndex = (self.fftDataIndex % #self.fftData) + 1
+
+    -- Check if the current song has finished playing
+    if not self.music:isPlaying() then
+        self.currentSongIndex = self.currentSongIndex % #self.songs + 1
+        self:playCurrentSong()
+    end
+
     -- Update AI controller
     if self.aiController then
         self.aiController:update(dt)
@@ -83,28 +92,27 @@ function Game:update(dt)
         love.audio.play(self.clashSound)
     end
 
-    -- Check for game over
-    local isGameOver = self.fighter1.health <= 0 or self.fighter2.health <= 0
-    if isGameOver then
-        local winner = self.fighter1.health > 0 and self.fighter1 or self.fighter2
-        local isDraw = self.fighter1.health == self.fighter2.health
-        local isDeathAnimationPlaying = self.fighter1.isDeathAnimationPlaying or self.fighter2.isDeathAnimationPlaying
-        -- stop music
-        self.music:stop()
-        -- Wait for death animation
-        if not isDeathAnimationPlaying then
-            self.gameOver = true
-            self.winner = isDraw and 'Draw!' or winner.name
+    -- Check for game over - leave this block last
+    local hasFighterDied = self.fighter1.state == 'death' or self.fighter2.state == 'death'
+    if hasFighterDied then
+        -- Check if death animation is still playing
+        if self.fighter1.state == 'death' then
+            self.fighter1:checkDeathAnimationFinished()
         end
-    end
+        if self.fighter2.state == 'death' then
+            self.fighter2:checkDeathAnimationFinished()
+        end
 
-    -- Update FFT data index
-    self.fftDataIndex = (self.fftDataIndex % #self.fftData) + 1
-
-    -- Check if the current song has finished playing
-    if not isGameOver and not self.music:isPlaying() then
-        self.currentSongIndex = self.currentSongIndex % #self.songs + 1
-        self:playCurrentSong()
+        -- Only set game over when death animations are finished
+        if self.fighter1.deathAnimationFinished or self.fighter2.deathAnimationFinished then
+            self.gameOver = true
+            if self.fighter1.deathAnimationFinished and self.fighter2.deathAnimationFinished then
+                self.winner = 'Draw!'
+            else
+                self.winner = self.fighter1.deathAnimationFinished and self.fighter2.name or self.fighter1.name
+            end
+            self.music:stop()
+        end
     end
 end
 
@@ -125,6 +133,10 @@ function Game:render()
 
     -- Render FFT visualizer
     self:renderFFT()
+
+    -- Render recovery progress bars
+    self:renderRecoveryProgressBar(self.fighter1)
+    self:renderRecoveryProgressBar(self.fighter2)
 
     -- Render game over screen if game is over
     if self.gameOver then
@@ -149,6 +161,27 @@ function Game:render()
         local fps = love.timer.getFPS()
         love.graphics.print('FPS: ' .. fps, SPRITE_WIDTH - 60, 10)
     end
+end
+
+function Game:renderRecoveryProgressBar(fighter)
+    local currentTime = love.timer.getTime()
+    local recoveryDuration =
+        fighter.hitboxes[fighter.lastAttackType] and fighter.hitboxes[fighter.lastAttackType].recovery or 0
+    local elapsedTime = currentTime - (fighter.recoveryEndTime - recoveryDuration)
+    local progress = math.min(elapsedTime / recoveryDuration, 1) -- Ensure progress doesn't exceed 1
+
+    local barWidth = 60 -- Half the width
+    local barHeight = 4
+    local x = fighter.id == 1 and 10 or love.graphics.getWidth() - 10 - barWidth
+    local y = 45 -- Position just under the stamina bar
+
+    love.graphics.setColor(1, 1, 1, 0.5) -- Background color
+    love.graphics.rectangle('fill', x, y, barWidth, barHeight)
+
+    love.graphics.setColor(1, 1, 1, 1) -- Progress color
+    love.graphics.rectangle('fill', x, y, barWidth * progress, barHeight)
+
+    love.graphics.setColor(1, 1, 1, 1) -- Reset color
 end
 
 function Game:buildBackground()
