@@ -159,9 +159,9 @@ function CharacterSelect:render()
         'Speed: ' .. character.traits.speed,
         'Health: ' .. character.traits.health,
         'Stamina: ' .. character.traits.stamina,
-        'Light Damage: ' .. character.hitboxes.light.damage,
-        'Medium Damage: ' .. character.hitboxes.medium.damage,
-        'Heavy Damage: ' .. character.hitboxes.heavy.damage
+        'Light Damage: ' .. character.attacks.light.damage,
+        'Medium Damage: ' .. character.attacks.medium.damage,
+        'Heavy Damage: ' .. character.attacks.heavy.damage
     }
     local statsX, statsY, statsYGap = 280, 100, 14
     love.graphics.setFont(self.statsFont)

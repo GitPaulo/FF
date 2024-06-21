@@ -1,5 +1,7 @@
 require 'dependencies'
 
+_G.FPS_CAP = 144
+
 local KeyMappings, Menu, Game, CharacterSelect, Loading, Settings, StateMachine, love, SoundManager =
     _G.KeyMappings,
     _G.Menu,
@@ -10,8 +12,9 @@ local KeyMappings, Menu, Game, CharacterSelect, Loading, Settings, StateMachine,
     _G.StateMachine,
     _G.love,
     _G.SoundManager -- Do not add _G.isDebug as it is changed by Settings
-
 local gStateMachine
+local tickPeriod = 1 / _G.FPS_CAP -- seconds per tick
+local accumulator = 0.0
 
 function love.load()
     local customCursor = love.mouse.newCursor('assets/cursor.png', 0, 0)
@@ -35,8 +38,13 @@ function love.load()
 end
 
 function love.update(dt)
-    SoundManager:update()
-    gStateMachine:update(dt)
+    -- Game loop runs at a fixed rate
+    accumulator = accumulator + dt
+    while accumulator >= tickPeriod do
+        SoundManager:update()
+        gStateMachine:update(dt)
+        accumulator = accumulator - tickPeriod
+    end
 
     -- Keep it after the state machine update
     love.keyboard.keysPressed = {}
@@ -50,10 +58,10 @@ end
 local keyStates = {}
 
 function love.keyboard.setKeyState(key, isPressed)
-    if key then  -- Add this check to ensure key is not nil
+    if key then -- Add this check to ensure key is not nil
         keyStates[key] = isPressed
     else
-        print("Warning: Attempt to set state for nil key") -- Add a warning to debug potential issues
+        print('Warning: Attempt to set state for nil key') -- Add a warning to debug potential issues
     end
 end
 

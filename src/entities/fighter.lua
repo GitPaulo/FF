@@ -13,6 +13,7 @@ function Fighter:init(
     controls,
     traits,
     hitboxes,
+    attacks,
     spriteConfig,
     soundFXConfig)
     -- Character Properties
@@ -32,6 +33,7 @@ function Fighter:init(
     self.jumpStrength = -(traits.jumpStrength or 600)
     self.dashSpeed = traits.dashSpeed or 500
     self.hitboxes = hitboxes or {}
+    self.attacks = attacks or {}
     self:validateFighterParameters()
 
     -- Character State
@@ -98,8 +100,13 @@ function Fighter:validateFighterParameters()
         assert(hitbox.oy, 'Offset X must be defined for hitbox: ' .. attackType)
         assert(hitbox.width, 'Width must be defined for hitbox: ' .. attackType)
         assert(hitbox.height, 'Height must be defined for hitbox: ' .. attackType)
-        assert(hitbox.recovery, 'Recovery time must be defined for hitbox: ' .. attackType)
-        assert(hitbox.damage, 'Damage must be defined for hitbox: ' .. attackType)
+    end
+
+    for attackType, attack in pairs(self.attacks) do
+        assert(attack.start, 'Start frame must be defined for attack: ' .. attackType)
+        assert(attack.active, 'Active frame must be defined for attack: ' .. attackType)
+        assert(attack.damage, 'Damage must be defined for attack: ' .. attackType)
+        assert(attack.recovery, 'Recovery time must be defined for attack: ' .. attackType)
     end
 end
 
@@ -442,8 +449,9 @@ function Fighter:handleDamage(other)
         SoundManager:playSound(self.sounds.block)
     elseif not other.damageApplied then
         local attackHitbox = other:getAttackHitbox()
+        local attackData = other.attacks[other.attackType]
         if attackHitbox then
-            local attackDamage = attackHitbox.damage
+            local attackDamage = attackData.damage
             self:takeDamage(attackDamage)
             other.damageApplied = true -- Ensure damage is only applied once
         end
@@ -495,7 +503,7 @@ function Fighter:startRecovery(attackType)
     if _G.isDebug then
         print('Recovery started for', self.id, 'attack', attackType)
     end
-    self.recoveryEndTime = love.timer.getTime() + self.hitboxes[attackType].recovery
+    self.recoveryEndTime = love.timer.getTime() + self.attacks[attackType].recovery
     self.isRecovering = true
 end
 
@@ -649,7 +657,7 @@ end
 
 function Fighter:winClash(loser)
     -- Instead of applying damage immediately, set a flag to apply it later
-    loser.pendingDamage = self.hitboxes[loser.attackType].damage / 2
+    loser.pendingDamage = self.attacks[loser.attackType].damage / 2
     loser.knockbackApplied = true
     loser:applyKnockback()
 end

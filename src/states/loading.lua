@@ -46,6 +46,7 @@ function Loading:loadFighters()
         KeyMappings.fighter1Controls,
         fighter1Data.traits,
         fighter1Data.hitboxes,
+        fighter1Data.attacks,
         fighter1Data.spriteConfig,
         fighter1Data.soundFXConfig
     )
@@ -61,6 +62,7 @@ function Loading:loadFighters()
         KeyMappings.fighter2Controls,
         fighter2Data.traits,
         fighter2Data.hitboxes,
+        fighter2Data.attacks,
         fighter2Data.spriteConfig,
         fighter2Data.soundFXConfig
     )
