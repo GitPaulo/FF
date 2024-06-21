@@ -147,8 +147,11 @@ end
 
 function Game:drawRecoveryBar(fighter)
     local currentTime = love.timer.getTime()
+    local lastAttackType = fighter.lastAttackType
+
+    -- Ensure lastAttackType exists in fighter.attacks
     local recoveryDuration =
-        fighter.hitboxes[fighter.lastAttackType] and fighter.attacks[fighter.lastAttackType].recovery or 0
+        (lastAttackType and fighter.attacks[lastAttackType]) and fighter.attacks[lastAttackType].recovery or 0
     local elapsedTime = currentTime - (fighter.recoveryEndTime - recoveryDuration)
     local progress = math.min(elapsedTime / recoveryDuration, 1) -- Ensure progress doesn't exceed 1
 

@@ -46,6 +46,7 @@ function Fighter:init(
     self.isDashing = false
     self.isRecovering = false
     self.isClashing = false
+    self.isAttackActive = false
     -- Character State: attack
     self.attackType = nil
     self.lastAttackType = nil
@@ -217,6 +218,11 @@ function Fighter:updateState(dt, other)
     local isHitPeriodOver = currentTime >= self.hitEndTime
     local isIdle = self.state == 'idle'
 
+    -- Check if active attack
+    if isAttacking then
+        self:checkAttackActivity(currentTime)
+    end
+
     -- Check for clash
     if not self.isClashing then
         self:checkForClash(other)
@@ -229,12 +235,14 @@ function Fighter:updateState(dt, other)
 
     -- Transition from attacking to recovery if the attack period has ended
     if isAttacking and isAttackPeriodOver then
-        self.attackType = nil
         if self.isAirborne then
             self:setState('jump')
         else
             self:setState('idle')
         end
+
+        -- Start recovery period
+        self:startRecovery(self.attackType)
     end
 
     -- End recovery period if the recovery time has passed
@@ -250,6 +258,16 @@ function Fighter:updateState(dt, other)
     -- Recover stamina if the fighter is idle
     if isIdle then
         self:recoverStamina(dt)
+    end
+end
+
+function Fighter:checkAttackActivity()
+    local currentFrame = self.currentAnimation.position
+    -- Check if attack is active
+    if currentFrame >= self.attackActiveFrame and currentFrame < self.attackEndFrame then
+        self.isAttackActive = true
+    else
+        self.isAttackActive = false
     end
 end
 
@@ -458,7 +476,6 @@ function Fighter:handleDamage(other)
     end
 end
 
-
 function Fighter:startAttack(attackType)
     if self.state == 'attacking' or self.state == 'hit' or self.isRecovering then
         return -- Prevent new attacks from starting if already attacking or recovering or hit
@@ -488,15 +505,20 @@ function Fighter:startAttack(attackType)
     local attackDuration = self.animationDurations[attackType]
     self.attackEndTime = love.timer.getTime() + attackDuration
 
-    -- Play the attack sound
-    SoundManager:playSound(self.sounds[attackType], {clone = true})
+    -- Get the attack data
+    local attackData = self.attacks[attackType]
 
     -- Set the current animation to the attack animation
     self.currentAnimation = self.animations[attackType]
     self.currentAnimation:gotoFrame(1)
+    self.isAttackActive = false
 
-    -- Start recovery
-    self:startRecovery(attackType)
+    -- Store start and active frame durations
+    self.attackActiveFrame = attackData.start
+    self.attackEndFrame = attackData.active
+
+    -- Play the attack sound
+    SoundManager:playSound(self.sounds[attackType], {clone = true})
 end
 
 function Fighter:startRecovery(attackType)
@@ -504,6 +526,8 @@ function Fighter:startRecovery(attackType)
         print('Recovery started for', self.id, 'attack', attackType)
     end
     self.recoveryEndTime = love.timer.getTime() + self.attacks[attackType].recovery
+
+    self.attackType = nil
     self.isRecovering = true
 end
 
@@ -711,7 +735,7 @@ function Fighter:drawSprite()
     end
 end
 
-function Fighter:drawHitboxes(other)
+function Fighter:drawHitboxes()
     -- Draw Fighter hitbox
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.rectangle('line', self.x, self.y, self.width, self.height)
@@ -720,10 +744,9 @@ function Fighter:drawHitboxes(other)
     love.graphics.setColor(1, 1, 1, 1) -- Reset color
 
     -- Draw Fighter attack hitbox
-    if self.state == 'attacking' and self.attackType then
+    if self.isAttackActive then
         local hitbox = self:getAttackHitbox()
-        local currentTime = love.timer.getTime()
-        if currentTime <= self.attackEndTime then
+        if hitbox then
             love.graphics.setColor(1, 0, 0, 1)
             love.graphics.rectangle('line', hitbox.x, hitbox.y, hitbox.width, hitbox.height)
             love.graphics.setColor(1, 1, 1, 1) -- Reset color
@@ -811,7 +834,7 @@ end
 function Fighter:isHit(other)
     -- Check if the hitbox overlaps with the fighter's hitbox
     local hitbox = other:getAttackHitbox()
-    if hitbox and not other.damageApplied then
+    if hitbox and not other.damageApplied and other.isAttackActive then
         if
             hitbox.x < self.x + self.width and hitbox.x + hitbox.width > self.x and hitbox.y < self.y + self.height and
                 hitbox.y + hitbox.height > self.y

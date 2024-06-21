@@ -8,9 +8,9 @@ return {
         heavy = {ox = 0, oy = 0, width = 100, height = 25}
     },
     attacks = {
-        light = {start = 1, active = 5, damage = 5, recovery = 0.2},
-        medium = {start = 1, active = 5, damage = 10, recovery = 0.4},
-        heavy = {start = 1, active = 5, damage = 15, recovery = 0.8}
+        light = {start = 4, active = 6, damage = 5, recovery = 0.2},
+        medium = {start = 4, active = 6, damage = 10, recovery = 0.4},
+        heavy = {start = 4, active = 6, damage = 15, recovery = 0.8}
     },
     spriteConfig = {
         idle = {
