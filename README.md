@@ -37,7 +37,6 @@ I do not own any of the assets used in this game.
 ## TODO
 
 - [ ] Binary data to represent FFT data (binrary json)
-- [ ] Decouple the framedata from the hitbox data and add active/startup frames
 - [ ] Fixed clashing dy knockback
 - [ ] Rock entity! Interact with rock (pray)?
 - [ ] Fix basic AI and settings passing logic

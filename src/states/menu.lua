@@ -85,13 +85,28 @@ function Menu:update(dt)
     end
 
     -- Check for hover on play button
-    playButtonHover = handleHoverSound(playButtonHover, mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= PLAY_BUTTON_Y and mouseY <= PLAY_BUTTON_Y + BUTTON_HEIGHT)
+    playButtonHover =
+        handleHoverSound(
+        playButtonHover,
+        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= PLAY_BUTTON_Y and
+            mouseY <= PLAY_BUTTON_Y + BUTTON_HEIGHT
+    )
 
     -- Check for hover on character button
-    characterButtonHover = handleHoverSound(characterButtonHover, mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= CHARACTER_BUTTON_Y and mouseY <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT)
+    characterButtonHover =
+        handleHoverSound(
+        characterButtonHover,
+        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= CHARACTER_BUTTON_Y and
+            mouseY <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT
+    )
 
     -- Check for hover on settings button
-    settingsButtonHover = handleHoverSound(settingsButtonHover, mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= SETTINGS_BUTTON_Y and mouseY <= SETTINGS_BUTTON_Y + BUTTON_HEIGHT)
+    settingsButtonHover =
+        handleHoverSound(
+        settingsButtonHover,
+        mouseX >= BUTTON_X and mouseX <= BUTTON_X + BUTTON_WIDTH and mouseY >= SETTINGS_BUTTON_Y and
+            mouseY <= SETTINGS_BUTTON_Y + BUTTON_HEIGHT
+    )
 
     -- Update the title animation
     self.timer = self.timer + dt * SPEED
@@ -186,9 +201,9 @@ function Menu:MoveToGame() -- Move to the game state
         {
             useAI = self.settings.useAI,
             songs = {
-                {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.json'},
-                {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.json'},
-                {path = 'assets/game3.mp3', fftDataPath = 'assets/fft_data_game3.json'}
+                {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.msgpack'},
+                {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.msgpack'},
+                {path = 'cassets/game3.mp3', fftDataPath = 'assets/fft_data_game3.msgpack'}
             },
             selectedFighters = self.selectedFighters
         }

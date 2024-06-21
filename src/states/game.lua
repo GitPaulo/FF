@@ -56,14 +56,22 @@ function Game:update(dt)
 
     self.timer = self.timer + dt * SPEED
 
-    -- Update FFT data index
-    self.fftDataIndex = (self.fftDataIndex % #self.fftData) + 1
-
     -- Check if the current song has finished playing
     if not self.music:isPlaying() then
         self.currentSongIndex = self.currentSongIndex % #self.songs + 1
         self:playCurrentSong()
     end
+
+    -- Update FFT data index based on the song's playback position
+    local playbackPosition = self.music:tell() -- in seconds
+    local sampleRate = 48000 -- 48000 Hz sample rate
+    local chunkSize = 2048 -- chunk size used in FFT calculation
+    local overlap = 0.75 -- 75% overlap used in FFT calculation
+    local stepSize = chunkSize * (1 - overlap) -- 25% of the chunk size
+
+    local samplesPerSecond = sampleRate / stepSize
+    local fftDataIndex = math.floor(playbackPosition * samplesPerSecond) + 1
+    self.fftDataIndex = (fftDataIndex - 1) % #self.fftData + 1
 
     -- Update AI controller
     if self.aiController then

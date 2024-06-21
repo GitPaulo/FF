@@ -1,8 +1,10 @@
-import json
 import numpy as np
-import scipy.fftpack
 import scipy.io.wavfile as wav
+import msgpack
+import msgpack_numpy as m
 from pydub import AudioSegment
+
+m.patch()
 
 def convert_mp3_to_wav(mp3_file_path, wav_file_path):
     audio = AudioSegment.from_mp3(mp3_file_path)
@@ -21,15 +23,19 @@ def compute_fft(file_path, output_path):
         data = np.mean(data, axis=1)
     
     # Parameters
-    chunk_size = 1024  # Slightly larger chunk size
-    step_size = chunk_size // 2  # 50% overlap
+    chunk_size = 2048  # Larger chunk size for better frequency resolution
+    step_size = chunk_size // 4  # 75% overlap for better temporal resolution
     fft_data = []
+    
+    # Apply window function
+    window = np.hanning(chunk_size)
     
     # Process audio in chunks
     for start in range(0, len(data) - chunk_size, step_size):
         chunk = data[start:start + chunk_size]
-        fft_result = scipy.fftpack.fft(chunk)
-        fft_magnitude = np.abs(fft_result[:chunk_size // 2])
+        chunk = chunk * window  # Apply window function
+        fft_result = np.fft.rfft(chunk)  # Real FFT
+        fft_magnitude = np.abs(fft_result)
         
         # Normalize FFT data
         max_value = np.max(fft_magnitude)
@@ -46,11 +52,12 @@ def compute_fft(file_path, output_path):
         
         fft_data.append(quantized_fft.tolist())
     
-    # Save FFT data to JSON file
-    with open(output_path, 'w') as f:
-        json.dump(fft_data, f)
+    # Save FFT data to a compressed MessagePack file
+    with open(output_path, 'wb') as f:
+        packed = msgpack.packb(fft_data)
+        f.write(packed)
 
 if __name__ == "__main__":
-    compute_fft('src/assets/game1.mp3', 'src/assets/fft_data_game1.json')
-    compute_fft('src/assets/game2.mp3', 'src/assets/fft_data_game2.json')
-    compute_fft('src/assets/game3.mp3', 'src/assets/fft_data_game3.json')
+    compute_fft('src/assets/game1.mp3', 'src/assets/fft_data_game1.msgpack')
+    compute_fft('src/assets/game2.mp3', 'src/assets/fft_data_game2.msgpack')
+    compute_fft('src/assets/game3.mp3', 'src/assets/fft_data_game3.msgpack')

@@ -1,7 +1,7 @@
-local json = require 'lib.json'
+local msgpack = require 'lib.msgpack'
 local table = require 'lib.table'
-
 local KeyMappings, Fighter, love = _G.KeyMappings, _G.Fighter, _G.love
+
 local Loading = {}
 
 function Loading:enter(params)
@@ -71,8 +71,10 @@ end
 function Loading:loadSongs()
     while self.currentSongIndex <= #self.songs do
         local song = self.songs[self.currentSongIndex]
-        local fftDataFile = love.filesystem.read(song.fftDataPath)
-        song.fftData = json.decode(fftDataFile)
+        local file = love.filesystem.newFile(song.fftDataPath, "r")
+        local packedData = file:read(file:getSize())
+        file:close()
+        song.fftData = msgpack.unpack(packedData)
         self.currentSongIndex = self.currentSongIndex + 1
         coroutine.yield()
     end
@@ -92,7 +94,7 @@ function Loading:update(dt)
         if not success then
             error(message)
         end
-        if coroutine.status(self.loadingCoroutine) == 'death' then
+        if coroutine.status(self.loadingCoroutine) == 'dead' then
             self.loadingCoroutine = nil
         end
     end
