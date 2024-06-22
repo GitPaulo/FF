@@ -203,7 +203,7 @@ function Menu:MoveToGame() -- Move to the game state
             songs = {
                 {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.msgpack'},
                 {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.msgpack'},
-                {path = 'cassets/game3.mp3', fftDataPath = 'assets/fft_data_game3.msgpack'}
+                {path = 'assets/game3.mp3', fftDataPath = 'assets/fft_data_game3.msgpack'}
             },
             selectedFighters = self.selectedFighters
         }

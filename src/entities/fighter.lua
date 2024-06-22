@@ -540,7 +540,8 @@ end
 
 function Fighter:checkForClash(other)
     local isAllowedToClash =
-        self.state == 'attacking' and other.state == 'attacking' and not (self:isHit(other) or other:isHit(self))
+        self.state == 'attacking' and other.state == 'attacking' and not self.isBlocking and not other.isBlocking and
+        not (self:isHit(other) or other:isHit(self))
     if not isAllowedToClash then
         return
     end
