@@ -29,8 +29,9 @@ function Loading:enter(params)
 end
 
 function Loading:loadFighters()
-    local fighter1Data = table.deepcopy(require('fighters.' .. self.selectedFighters[1]))
-    local fighter2Data = table.deepcopy(require('fighters.' .. self.selectedFighters[2]))
+    -- TODO: Very dubious code
+    local fighter1Data = table.deepcopy(require('fighters.' .. string.lower(self.selectedFighters[1])))
+    local fighter2Data = table.deepcopy(require('fighters.' .. string.lower(self.selectedFighters[2])))
 
     -- TODO: Move to config
     local startPos1 = {100, 200}
