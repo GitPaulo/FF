@@ -42,12 +42,10 @@ function love.update(dt)
     accumulator = accumulator + dt
     while accumulator >= tickPeriod do
         SoundManager:update()
-        gStateMachine:update(dt)
+        gStateMachine:update(tickPeriod)
         accumulator = accumulator - tickPeriod
-    end
-
-    -- Keep it after the state machine update
-    love.keyboard.keysPressed = {}
+        love.keyboard.keysPressed = {}
+    end    
 end
 
 function love.draw()
