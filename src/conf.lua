@@ -1,8 +1,7 @@
 local love = _G.love;
 
 -- Global
-_G.isDebug = true
-
+_G.isDebug = false
 -- Love Configuration
 function love.conf(t)
     t.window.width = 425
