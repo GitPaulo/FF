@@ -116,7 +116,7 @@ function Game:render()
     -- Draw the background image
     local currentFrame = (math.floor(self.timer) % BACKGROUND_FRAMES) + 1
     -- love.graphics.draw(self.backgroundAnimation)
-    love.graphics.draw(self.backgroundAnimation, self.backgroundFrames[currentFrame], 0, 0)
+    love.graphics.draw(self.backgroundAnimation, self.backgroundFrames[currentFrame])
 
     -- Render fighters
     self.fighter1:render(self.fighter2)
@@ -187,12 +187,11 @@ function Game:buildBackground()
     local animationWidth, animationHeight = self.backgroundAnimation:getWidth(), self.backgroundAnimation:getHeight()
 
     for currentFrame = 0, BACKGROUND_FRAMES - 1 do
-        local currerentFrameStartX =  currentFrame * BACKGROUND_FRAME_WIDTH
         table.insert(
             self.backgroundFrames,
             love.graphics.newQuad(
-                currerentFrameStartX, BACKGROUND_FRAME_HEIGHT,
-                BACKGROUND_FRAME_WIDTH, BACKGROUND_FRAME_HEIGHT,
+                0, animationHeight/BACKGROUND_FRAMES*currentFrame,
+                BACKGROUND_FRAME_WIDTH, animationHeight/BACKGROUND_FRAMES,
                 animationWidth, animationHeight
             )
         )
