@@ -6,6 +6,11 @@ A tiny Love2D fighting game.
 
 ![alt text](.github/image_game.png)
 
+#### Controls
+
+- Fighter 1: `WASD, ERT`
+- Fighter 2: `UHJK, IOP`
+
 #### Controller Support?
 
 Sure, https://www.rewasd.com/
