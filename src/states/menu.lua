@@ -42,9 +42,6 @@ function Menu:enter(params)
     self.background = love.graphics.newImage('assets/background_menu_spritesheet.png')
     self:buildBackground()
 
-    -- Set window size
-    love.window.setMode(WINDOW_WIDTH, WINDOW_HEIGHT)
-
     -- Load fonts
     self.titleFont = love.graphics.newFont(32)
     self.buttonFont = love.graphics.newFont(20)

@@ -76,6 +76,10 @@ function love.mousepressed(x, y, button)
 end
 
 function love.keypressed(key, scancode, isrepeat)
+    --Debug
+    if key == "rctrl" then --set to whatever key you want to use
+        debug.debug()
+    end
     love.keyboard.keysPressed[key] = true
     love.keyboard.setKeyState(key, true)
     if _G.isDebug then

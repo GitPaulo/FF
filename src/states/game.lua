@@ -1,13 +1,16 @@
 local love, SoundManager, AIController = _G.love, _G.SoundManager, _G.AIController
 local Game = {}
 
-local SPRITE_WIDTH = 800
-local SPRITE_HEIGHT = 300
-local FRAMES = 38
+local BACKGROUND_FRAME_WIDTH = 800
+local BACKGROUND_FRAME_HEIGHT = 300
+local BACKGROUND_FRAMES = 38
 local SPEED = 10
 
 function Game:enter(params)
-    self.background = love.graphics.newImage('assets/background_game_spritesheet.png')
+     -- Set the window size to match the dimensions of a single sprite
+    love.window.setMode(BACKGROUND_FRAME_WIDTH, BACKGROUND_FRAME_HEIGHT,{['fullscreen'] = false})
+
+    self.backgroundAnimation = love.graphics.newImage('assets/background_game_spritesheet.png')
     self:buildBackground()
 
     -- Game state
@@ -111,8 +114,9 @@ function Game:render()
     love.graphics.clear(0, 0, 0, 1)
 
     -- Draw the background image
-    local currentFrame = (math.floor(self.timer) % FRAMES) + 1
-    love.graphics.draw(self.background, self.background_quads[currentFrame], 0, 0)
+    local currentFrame = (math.floor(self.timer) % BACKGROUND_FRAMES) + 1
+    -- love.graphics.draw(self.backgroundAnimation)
+    love.graphics.draw(self.backgroundAnimation, self.backgroundFrames[currentFrame])
 
     -- Render fighters
     self.fighter1:render(self.fighter2)
@@ -132,16 +136,16 @@ function Game:render()
     if self.gameOver then
         -- Apply semi-transparent red overlay
         love.graphics.setColor(1, 0, 0, 0.5)
-        love.graphics.rectangle('fill', 0, 0, SPRITE_WIDTH, SPRITE_HEIGHT)
+        love.graphics.rectangle('fill', 0, 0, BACKGROUND_FRAME_WIDTH, BACKGROUND_FRAME_HEIGHT)
         love.graphics.setColor(1, 1, 1, 1) -- Reset color to white
 
         -- Render game over text
         love.graphics.setFont(self.gameOverFont)
-        love.graphics.printf('Game Over', 0, SPRITE_HEIGHT / 2 - 60, SPRITE_WIDTH, 'center')
+        love.graphics.printf('Game Over', 0, BACKGROUND_FRAME_HEIGHT / 2 - 60, BACKGROUND_FRAME_WIDTH, 'center')
         love.graphics.setFont(self.winnerFont)
-        love.graphics.printf(self.winner .. ' wins!', 0, SPRITE_HEIGHT / 2 - 10, SPRITE_WIDTH, 'center')
+        love.graphics.printf(self.winner .. ' wins!', 0, BACKGROUND_FRAME_HEIGHT / 2 - 10, BACKGROUND_FRAME_WIDTH, 'center')
         love.graphics.setFont(self.instructionsFont)
-        love.graphics.printf("Press 'ESC' to return to Main Menu", 0, SPRITE_HEIGHT / 2 + 20, SPRITE_WIDTH, 'center')
+        love.graphics.printf("Press 'ESC' to return to Main Menu", 0, BACKGROUND_FRAME_HEIGHT / 2 + 20, BACKGROUND_FRAME_WIDTH, 'center')
     end
 
     -- Render FPS counter in the top right corner
@@ -149,7 +153,7 @@ function Game:render()
         love.graphics.setFont(self.fpsFont)
         love.graphics.setColor(1, 1, 1, 1)
         local fps = love.timer.getFPS()
-        love.graphics.print('FPS: ' .. fps, SPRITE_WIDTH - 60, 10)
+        love.graphics.print('FPS: ' .. fps, BACKGROUND_FRAME_WIDTH - 60, 10)
     end
 end
 
@@ -178,20 +182,20 @@ function Game:drawRecoveryBar(fighter)
 end
 
 function Game:buildBackground()
-    self.background_quads = {}
+    self.backgroundFrames = {}
 
-    local imgWidth, imgHeight = self.background:getWidth(), self.background:getHeight()
+    local animationWidth, animationHeight = self.backgroundAnimation:getWidth(), self.backgroundAnimation:getHeight()
 
-    for i = 0, FRAMES - 1 do
-        local x = i * SPRITE_WIDTH
+    for currentFrame = 0, BACKGROUND_FRAMES - 1 do
         table.insert(
-            self.background_quads,
-            love.graphics.newQuad(x, 0, SPRITE_WIDTH, SPRITE_HEIGHT, imgWidth, imgHeight)
+            self.backgroundFrames,
+            love.graphics.newQuad(
+                0, animationHeight/BACKGROUND_FRAMES*currentFrame,
+                BACKGROUND_FRAME_WIDTH, animationHeight/BACKGROUND_FRAMES,
+                animationWidth, animationHeight
+            )
         )
     end
-
-    -- Set the window size to match the dimensions of a single sprite
-    love.window.setMode(SPRITE_WIDTH, SPRITE_HEIGHT)
 end
 
 function Game:drawHealthBars()
@@ -247,7 +251,7 @@ function Game:drawHealthBars()
 end
 
 function Game:drawFFT()
-    local centerX = SPRITE_WIDTH / 2
+    local centerX = BACKGROUND_FRAME_WIDTH / 2
     local centerY = 40
     local fftData = self.fftData[self.fftDataIndex]
     if fftData then
