@@ -1,10 +1,10 @@
 local love = _G.love
 local Menu = {}
 
-local TITLE_TEXT = 'Tiny Fighting Game'
-local PLAY_BUTTON_TEXT = 'Play'
-local CHARACTER_SELECT_TEXT = 'Characters'
-local SETTINGS_TEXT = 'Settings'
+local TITLE_TEXT = "Tiny Fighting Game"
+local PLAY_BUTTON_TEXT = "Play"
+local CHARACTER_SELECT_TEXT = "Characters"
+local SETTINGS_TEXT = "Settings"
 
 local BUTTON_WIDTH = 140
 local BUTTON_HEIGHT = 35
@@ -24,6 +24,9 @@ local characterButtonHover = false
 local settingsButtonHover = false
 
 function Menu:enter(params)
+    -- Set the window to menu size
+    love.window.setMode(WINDOW_WIDTH, WINDOW_HEIGHT, {["fullscreen"] = false})
+
     -- For first open
     params = params or {}
 
@@ -36,10 +39,10 @@ function Menu:enter(params)
         }
 
     -- Selected Fighters
-    self.selectedFighters = params.selectedFighters or {'Samurai1', 'Samurai2'}
+    self.selectedFighters = params.selectedFighters or {"Samurai1", "Samurai2"}
 
     -- Background
-    self.background = love.graphics.newImage('assets/background_menu_spritesheet.png')
+    self.background = love.graphics.newImage("assets/background_menu_spritesheet.png")
     self:buildBackground()
 
     -- Load fonts
@@ -51,17 +54,17 @@ function Menu:enter(params)
     self.titleScale = 1
 
     -- Load background music
-    self.backgroundMusic = love.audio.newSource('assets/menu.mp3', 'stream')
+    self.backgroundMusic = love.audio.newSource("assets/menu.mp3", "stream")
     self.backgroundMusic:setLooping(true)
     love.audio.stop() -- stop current music
     love.audio.play(self.backgroundMusic)
 
     -- Button hover sound
-    self.hoverSound = love.audio.newSource('assets/hover.mp3', 'static')
-    self.clickSound = love.audio.newSource('assets/click.mp3', 'static')
+    self.hoverSound = love.audio.newSource("assets/hover.mp3", "static")
+    self.clickSound = love.audio.newSource("assets/click.mp3", "static")
 
     -- Set custom cursor
-    self.cursor = love.graphics.newImage('assets/cursor.png')
+    self.cursor = love.graphics.newImage("assets/cursor.png")
     love.mouse.setVisible(false)
 end
 
@@ -122,7 +125,7 @@ function Menu:render()
     love.graphics.push()
     love.graphics.translate(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 5)
     love.graphics.scale(self.titleScale, self.titleScale)
-    love.graphics.printf(TITLE_TEXT, -WINDOW_WIDTH / 2, 0, WINDOW_WIDTH, 'center')
+    love.graphics.printf(TITLE_TEXT, -WINDOW_WIDTH / 2, 0, WINDOW_WIDTH, "center")
     love.graphics.pop()
 
     -- Draw the settings button with hover effect
@@ -132,8 +135,8 @@ function Menu:render()
     else
         love.graphics.setColor(1, 1, 1, 1) -- Solid white for normal
     end
-    love.graphics.rectangle('line', BUTTON_X, SETTINGS_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
-    love.graphics.printf(SETTINGS_TEXT, BUTTON_X, SETTINGS_BUTTON_Y + (BUTTON_HEIGHT / 5), BUTTON_WIDTH, 'center')
+    love.graphics.rectangle("line", BUTTON_X, SETTINGS_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    love.graphics.printf(SETTINGS_TEXT, BUTTON_X, SETTINGS_BUTTON_Y + (BUTTON_HEIGHT / 5), BUTTON_WIDTH, "center")
 
     -- Draw the character select button with hover effect
     if characterButtonHover then
@@ -141,13 +144,13 @@ function Menu:render()
     else
         love.graphics.setColor(1, 1, 1, 1) -- Solid white for normal
     end
-    love.graphics.rectangle('line', BUTTON_X, CHARACTER_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    love.graphics.rectangle("line", BUTTON_X, CHARACTER_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
     love.graphics.printf(
         CHARACTER_SELECT_TEXT,
         BUTTON_X,
         CHARACTER_BUTTON_Y + (BUTTON_HEIGHT / 5),
         BUTTON_WIDTH,
-        'center'
+        "center"
     )
 
     -- Draw the play button with hover effect
@@ -156,8 +159,8 @@ function Menu:render()
     else
         love.graphics.setColor(1, 1, 1, 1) -- Solid white for normal
     end
-    love.graphics.rectangle('line', BUTTON_X, PLAY_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
-    love.graphics.printf(PLAY_BUTTON_TEXT, BUTTON_X, PLAY_BUTTON_Y + (BUTTON_HEIGHT / 5), BUTTON_WIDTH, 'center')
+    love.graphics.rectangle("line", BUTTON_X, PLAY_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    love.graphics.printf(PLAY_BUTTON_TEXT, BUTTON_X, PLAY_BUTTON_Y + (BUTTON_HEIGHT / 5), BUTTON_WIDTH, "center")
 
     -- Reset color
     love.graphics.setColor(1, 1, 1)
@@ -175,32 +178,32 @@ function Menu:mousepressed(x, y, button)
                 y <= CHARACTER_BUTTON_Y + BUTTON_HEIGHT
          then
             love.audio.play(self.clickSound)
-            self.stateMachine:change('characterselect')
+            self.stateMachine:change("characterselect")
         elseif
             x >= BUTTON_X and x <= BUTTON_X + BUTTON_WIDTH and y >= SETTINGS_BUTTON_Y and
                 y <= SETTINGS_BUTTON_Y + BUTTON_HEIGHT
          then
             love.audio.play(self.clickSound)
-            self.stateMachine:change('settings', self.settings)
+            self.stateMachine:change("settings", self.settings)
         end
     end
 end
 
 function Menu:keypressed(key)
-    if key == 'space' then
+    if key == "space" then
         self:MoveToGame()
     end
 end
 
 function Menu:MoveToGame() -- Move to the game state
     self.stateMachine:change(
-        'loading',
+        "loading",
         {
             useAI = self.settings.useAI,
             songs = {
-                {path = 'assets/game1.mp3', fftDataPath = 'assets/fft_data_game1.msgpack'},
-                {path = 'assets/game2.mp3', fftDataPath = 'assets/fft_data_game2.msgpack'},
-                {path = 'assets/game3.mp3', fftDataPath = 'assets/fft_data_game3.msgpack'}
+                {path = "assets/game1.mp3", fftDataPath = "assets/fft_data_game1.msgpack"},
+                {path = "assets/game2.mp3", fftDataPath = "assets/fft_data_game2.msgpack"},
+                {path = "assets/game3.mp3", fftDataPath = "assets/fft_data_game3.msgpack"}
             },
             selectedFighters = self.selectedFighters
         }

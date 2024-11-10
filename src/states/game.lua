@@ -7,7 +7,7 @@ local BACKGROUND_FRAMES = 38
 local SPEED = 10
 
 function Game:enter(params)
-     -- Set the window size to match the dimensions of a single sprite
+    -- Set the window size to match the dimensions of a single sprite
     love.window.setMode(BACKGROUND_FRAME_WIDTH, BACKGROUND_FRAME_HEIGHT,{['fullscreen'] = false})
 
     self.backgroundAnimation = love.graphics.newImage('assets/background_game_spritesheet.png')
@@ -190,8 +190,8 @@ function Game:buildBackground()
         table.insert(
             self.backgroundFrames,
             love.graphics.newQuad(
-                0, animationHeight/BACKGROUND_FRAMES*currentFrame,
-                BACKGROUND_FRAME_WIDTH, animationHeight/BACKGROUND_FRAMES,
+                BACKGROUND_FRAME_WIDTH * currentFrame, 0,
+                BACKGROUND_FRAME_WIDTH, BACKGROUND_FRAME_HEIGHT,
                 animationWidth, animationHeight
             )
         )

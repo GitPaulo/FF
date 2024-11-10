@@ -800,12 +800,14 @@ function Fighter:drawClashText(other)
         love.graphics.printf('Clash!', clashX - 50, clashY, 100, 'center')
 
         -- Draw "LOST" over the losing player
-        if self.lostClash then
-            love.graphics.setColor(1, 0, 0, 1)
-            love.graphics.printf('Lost', self.x - 28, self.y - 25, 100, 'center')
-        elseif other.lostClash then
-            love.graphics.setColor(1, 0, 0, 1)
-            love.graphics.printf('Lost', other.x - 28, other.y - 25, 100, 'center')
+        if _G.isDebug then
+            if self.lostClash then
+                love.graphics.setColor(1, 0, 0, 1)
+                love.graphics.printf('Lost', self.x - 28, self.y - 25, 100, 'center')
+            elseif other.lostClash then
+                love.graphics.setColor(1, 0, 0, 1)
+                love.graphics.printf('Lost', other.x - 28, other.y - 25, 100, 'center')
+            end
         end
 
         love.graphics.setColor(1, 1, 1, 1) -- Reset color
